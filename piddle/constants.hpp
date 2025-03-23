@@ -9,7 +9,7 @@
 const int LEDS_PER_STRIP = 151;
 
 const int VOLTAGE_PIN = 36;
-const int INFRARED_PIN = 23;
+const int INFRARED_PIN = 15;
 
 /*
 Special pins:
@@ -48,7 +48,13 @@ Special pins:
 */
 // This is the most pins I could get to work with FastLED
 // constexpr int LED_PINS[] = {4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 23, 25, 26, 27, 32, 33};
-constexpr int LED_PINS[] = {26, 25, 33, 32, 22};
+constexpr int LED_PINS[] = {
+  // Left side
+  13, 12, 14, 27, 26, 25, 33, 32,
+  // Right side
+  23, 22, 21, 19, 18, 17, 16
+};
+//constexpr int LED_PINS[] = {26, 25, 33, 32, 22};
 // These are the pins I have defined on my PCB
 //constexpr int LED_PINS[] = {27, 26, 25, 33, 32, 22, 21, 17, 16, 4};
 const int STRIP_COUNT = COUNT_OF(LED_PINS);

@@ -20,7 +20,7 @@ bool logDebug = false;
 
 TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
-IRDecoder irDecoder(INFRARED_PIN);
+//IRDecoder irDecoder(INFRARED_PIN);
 I2SClocklessLedDriver driver;
 
 void IRAM_ATTR buttonInterrupt() {
@@ -108,6 +108,7 @@ void displayLedsFunction(void*) {
         }
       }
 
+/*
       if (irDecoder.available()) {
         Serial.print("Decoded NEC Data: 0x");
         Serial.print(irDecoder.getDecodedData(), HEX);
@@ -118,6 +119,7 @@ void displayLedsFunction(void*) {
           Serial.println(" (NEW PRESS)");
         }
       }
+*/
     }
     // Keep the watchdog happy
     delay(1);
