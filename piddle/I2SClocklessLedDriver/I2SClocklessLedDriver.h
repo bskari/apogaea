@@ -37,10 +37,9 @@
 
 #include "helper.h"
 
-#include "../constants.hpp"
-
 #ifndef NUMSTRIPS
-#define NUMSTRIPS 16
+#warning "NUMSTRIPS not defined, defaulting to 10"
+#define NUMSTRIPS 10
 #endif
 
 #ifndef SNAKEPATTERN
@@ -126,9 +125,8 @@
 #endif
 
 #ifndef NUM_LEDS_PER_STRIP
-#pragma message "NUM_LEDS_PER_STRIP not defined, using default 256"
-#error "NUM_LEDS_PER_STRIP not defined, using default 256"
-#define NUM_LEDS_PER_STRIP 256
+#warning "NUM_LEDS_PER_STRIP not defined, using default 151"
+#define NUM_LEDS_PER_STRIP 151
 #endif
 
 #define __delay (((NUM_LEDS_PER_STRIP * 125 * 8 * _nb_components) /100000) +1 )
