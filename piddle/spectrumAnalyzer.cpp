@@ -14,7 +14,7 @@
 // Set this to 1 if you want to from both ends of the LED strips. Primarily used for testing and
 // development when I don't want to have 10 strips all hooked up at once.
 #ifndef DOUBLE_ENDED
-#  define DOUBLE_ENDED 1
+#  define DOUBLE_ENDED 0
 #endif
 
 // Set this to 1 if you want to display the voltage on the LED strip, for testing
