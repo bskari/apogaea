@@ -316,6 +316,9 @@ void displaySpectrumAnalyzer() {
     }
   #endif
 
+  const int limitedBrightness = calculate_max_brightness_for_power_vmA(leds, STRIP_COUNT * LEDS_PER_STRIP, 64, 12, 6000);
+  driver.setBrightness(limitedBrightness);
+
   part_us = micros();
   driver.showPixels(NO_WAIT);
   const auto show_us = micros() - part_us;

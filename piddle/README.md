@@ -1,7 +1,8 @@
 Piddle
 ======
 
-Knockoff version of Sound Puddle. Smaller, fewer strips, running on a protoboard ESP32.
+Sound reactive LED strips, originating from a central point and placed in a
+geodesic dome. Running on a custom PCB with ESP32. Coming soon: ArtNet DMX!
 
 Wiring
 ------
