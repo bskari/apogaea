@@ -65,9 +65,6 @@ struct {
 #endif
 
 static const int VOLTAGE_PIN = 34;
-static const int GREEN_PIN = 21;
-static const int YELLOW_PIN = 22;
-static const int RED_PIN = 18;
 static const int RELAY_PIN = 32;
 
 // According to https://shopsolarkits.com/blogs/learning-center/marine-battery-voltage-chart,
@@ -80,11 +77,6 @@ enum class State {
   On,
   Off,
 };
-enum class LedColor {
-  Green,
-  Yellow,
-  Red,
-};
 
 static bool show = false;
 
@@ -96,7 +88,6 @@ float voltageToUndividedVoltage(float voltage);
 float correctedVoltage(float voltage);
 constexpr float voltageToPercent(float voltage);
 constexpr float sliderToVoltage(int slider);
-void updateLeds(const State state, const LedColor color);
 void updateRemoteXY(const State state, const float battery_v);
 
 void IRAM_ATTR buttonInterrupt() {
@@ -132,10 +123,6 @@ void setup() {
   digitalWrite(LED_BUILTIN, LOW);
 
   pinMode(VOLTAGE_PIN, INPUT);
-
-  pinMode(GREEN_PIN, OUTPUT);
-  pinMode(YELLOW_PIN, OUTPUT);
-  pinMode(RED_PIN, OUTPUT);
 
   // The boot button is connected to GPIO0
   pinMode(0, INPUT);
@@ -227,7 +214,6 @@ void loop() {
   auto relayToggleTime_ms = millis();
 
   State state;
-  LedColor color;
 
   {
     const int adcReading = analogRead(VOLTAGE_PIN);
@@ -235,7 +221,6 @@ void loop() {
     const float battery_v = voltageToUndividedVoltage(adc_v);
     const float correctedBattery_v = correctedVoltage(battery_v);
     state = (correctedBattery_v > RemoteXY.offVoltage) ? State::On : State::Off;
-    color = (correctedBattery_v > RemoteXY.offVoltage) ? LedColor::Green : LedColor::Yellow;
   }
 
   decltype(millis()) next_ms = 0;
@@ -288,9 +273,6 @@ void loop() {
             Serial.printf("Turning off strips, V=%0.2f<%0.2f\n", correctedBattery_v, RemoteXY.offVoltage);
             state = State::Off;
             digitalWrite(RELAY_PIN, LOW);
-            color = LedColor::Red;
-          } else if (correctedBattery_v < RemoteXY.resumeVoltage) {
-            color = LedColor::Yellow;
           }
           break;
         case State::Off:
@@ -298,53 +280,16 @@ void loop() {
             Serial.printf("Turning on strips, V=%0.2f>%0.2f\n", correctedBattery_v, RemoteXY.resumeVoltage);
             state = State::On;
             digitalWrite(RELAY_PIN, HIGH);
-            color = LedColor::Green;
-          } else if (correctedBattery_v > RemoteXY.offVoltage) {
-            color = LedColor::Yellow;
           }
           break;
       }
     }
 
-    updateLeds(state, color);
     RemoteXY_Handler();
     updateRemoteXY(state, correctedBattery_v);
   }
 }
 
-void updateLeds(const State state, const LedColor color) {
-  digitalWrite(GREEN_PIN, LOW);
-  digitalWrite(YELLOW_PIN, LOW);
-  digitalWrite(RED_PIN, LOW);
-  if (state == State::On) {
-    switch (color) {
-      case LedColor::Green:
-        digitalWrite(GREEN_PIN, HIGH);
-        break;
-      case LedColor::Yellow:
-        digitalWrite(YELLOW_PIN, HIGH);
-        break;
-      case LedColor::Red:
-        digitalWrite(RED_PIN, HIGH);
-        break;
-    }
-  } else {
-    // Blink it
-    if ((millis() >> 8) & 1) {
-      switch (color) {
-        case LedColor::Green:
-          digitalWrite(GREEN_PIN, HIGH);
-          break;
-        case LedColor::Yellow:
-          digitalWrite(YELLOW_PIN, HIGH);
-          break;
-        case LedColor::Red:
-          digitalWrite(RED_PIN, HIGH);
-          break;
-      }
-    }
-  }
-}
 
 void updateRemoteXY(const State state, const float battery_v) {
   switch (state) {
