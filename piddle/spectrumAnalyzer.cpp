@@ -72,8 +72,8 @@ static void powerOfTwo(float* const array, const int length);
 static constexpr float square(const float f);
 
 // Minimum divisor. The output from the FFT is squared, and we could sqrt it, but that's slow and
-// unnecessary, so just square this number.
-const float minimumDivisor = square(10000);
+// unnecessary, so just square this number. Lower this number to increase sensitivity.
+const float minimumDivisor = square(4000);
 
 static void computeFft() {
   // Windowing
