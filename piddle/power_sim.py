@@ -1,7 +1,8 @@
 """Testing some parameters to see how much the solar panel and batteries can last"""
 from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
-import math
 from dataclasses import dataclass
+from enum import Enum
+import math
 import sys
 
 has_matplot = False
@@ -45,6 +46,10 @@ assert get_sunlight_percentage(7, 0, DEFAULT_STD_DEV) < .2
 assert get_sunlight_percentage(12, 0, DEFAULT_STD_DEV) == 1
 assert get_sunlight_percentage(11, 0, DEFAULT_STD_DEV) == get_sunlight_percentage(13, 0, DEFAULT_STD_DEV)
 
+DAYS = ("Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat")
+def get_day(index: int) -> str:
+    return DAYS[(index + 700) % 7]
+
 @dataclass
 class Options:
     solar_w: float
@@ -53,6 +58,7 @@ class Options:
     resume_battery_wh: float
     project_w: float
     std_dev: float
+    start_day: int
 
 
 def run_simulation(options: Options) -> None:
@@ -62,24 +68,24 @@ def run_simulation(options: Options) -> None:
 
     battery_wh = options.max_battery_wh
 
-    days = ("Wed", "Thu", "Fri", "Sat", "Sun")
-    day = 0
-    start_hour = 12
+    day = options.start_day
+    start_hour = 11
     hour = start_hour
 
     previous_increasing = False
     previous_on = True
     previous_maxed = True
-    minute = 0
+    minute = 59
 
-    def format_message():
-        message = f"{days[day]} {hour:02d}:{minute:02d}"
+    def format_message() -> None:
+        message = f"{get_day(day)} {hour:02d}:{minute:02d}"
         truncated_percent = int(battery_wh / options.max_battery_wh * 100)
         message += f" {battery_wh:>7.2f} Wh {truncated_percent:>3.0f}%"
         if maxed:
             message += ' maxed'
         message += (' on' if on else ' off')
-        message += (' in' if increasing else ' de') + "creasing"
+        if not maxed:
+            message += (' in' if increasing else ' de') + "creasing"
         return message
 
     on = True
@@ -89,6 +95,7 @@ def run_simulation(options: Options) -> None:
     battery_wh_by_minute = []
     toggle_power_times = [(0, True)]
     annotations = []
+    first_loop = True
 
     def add_annotation(minutes, battery_wh, offset):
         hours = (total_minutes + 60 * start_hour) // 60
@@ -101,7 +108,7 @@ def run_simulation(options: Options) -> None:
             offset,
         ))
 
-    while day < len(days) - 1 or hour < 18:
+    while day < 8 or hour < 18:
         minute += 1
         if minute == 60:
             hour += 1
@@ -112,7 +119,7 @@ def run_simulation(options: Options) -> None:
 
         total_minutes += 1
 
-        need_print = False
+        need_print = first_loop
 
         battery_wh_by_minute.append(battery_wh)
         previous_battery_wh = battery_wh
@@ -152,6 +159,7 @@ def run_simulation(options: Options) -> None:
         previous_on = on
         previous_maxed = maxed
         previous_hour = hour
+        first_loop = False
 
     print(format_message())
 
@@ -161,7 +169,7 @@ def run_simulation(options: Options) -> None:
     if has_matplot:
         plt.figure(figsize=(10, 5), num="Solar power simulation")
         tick_positions = [m for m in range(total_minutes) if m % (6 * 60) == 0]
-        tick_labels = [f"{days[(m + 60 * start_hour) // (60 * 24)][:2]}\n{((m + 60 * start_hour) // 60) % 24:02d}:00" for m in tick_positions]
+        tick_labels = [f"{get_day((m + 60 * start_hour) // (60 * 24))[:2]}\n{((m + 60 * start_hour) // 60) % 24:02d}:00" for m in tick_positions]
 
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
             color = "darkorange" if start[1] else "black"
@@ -239,6 +247,13 @@ def make_parser() -> ArgumentParser:
         default=None,
     )
     parser.add_argument(
+        "--start-day",
+        "-d",
+        type=int,
+        help="Start day for the simulation. 0=Sunday (i.e. for BM), 3=Wednesday (i.e. for Apogaea).",
+        default=3,
+    )
+    parser.add_argument(
         "--std-dev",
         type=float,
         help="Standard deviation for solar radiation curve.",
@@ -288,6 +303,7 @@ if __name__ == "__main__":
         resume_battery_wh=namespace.battery_wh * namespace.resume_battery / 100,
         project_w=project_w,
         std_dev=namespace.std_dev,
+        start_day=namespace.start_day,
     )
 
     # https://www.turbinegenerator.org/solar/colorado/ claims that southern
@@ -310,4 +326,5 @@ if __name__ == "__main__":
     print(f"- Solar power std dev: {options.std_dev:0.2f}")
     percent = (options.project_w - IDLE_W) / (DEFAULT_W - IDLE_W) * 100
     print(f"- Project power: {percent:0.0f}% brightness / {options.project_w:0.2f} W")
+    print(f"- Start day: {get_day(options.start_day)}")
     run_simulation(options)
