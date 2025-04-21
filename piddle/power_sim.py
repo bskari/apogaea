@@ -69,7 +69,7 @@ def run_simulation(options: Options) -> None:
     battery_wh = options.max_battery_wh
 
     day = options.start_day
-    start_hour = 11
+    start_hour = 12
     hour = start_hour
 
     previous_increasing = False
@@ -169,7 +169,7 @@ def run_simulation(options: Options) -> None:
     if has_matplot:
         plt.figure(figsize=(10, 5), num="Solar power simulation")
         tick_positions = [m for m in range(total_minutes) if m % (6 * 60) == 0]
-        tick_labels = [f"{get_day((m + 60 * start_hour) // (60 * 24))[:2]}\n{((m + 60 * start_hour) // 60) % 24:02d}:00" for m in tick_positions]
+        tick_labels = [f"{get_day((options.start_day * 24 * 60 + start_hour * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * start_hour) // 60) % 24:02d}:00" for m in tick_positions]
 
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
             color = "darkorange" if start[1] else "black"
