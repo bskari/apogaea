@@ -64,13 +64,14 @@ class Options:
 def run_simulation(options: Options) -> None:
     """Runs a simulation."""
     # The voltage monitor and Phonic Bloom each use about 0.5 W
-    arduino_w = 1.0
+    ARDUINO_W = 1.0
 
     battery_wh = options.max_battery_wh
 
     day = options.start_day
-    start_hour = 12
-    hour = start_hour
+    START_HOUR = 12
+    END_DAY = 8 if options.start_day == 0 else 7
+    hour = START_HOUR
 
     previous_increasing = False
     previous_on = True
@@ -98,9 +99,9 @@ def run_simulation(options: Options) -> None:
     first_loop = True
 
     def add_annotation(minutes, battery_wh, offset):
-        hours = (total_minutes + 60 * start_hour) // 60
+        hours = (total_minutes + 60 * START_HOUR) // 60
         hour = hours % 24
-        minutes = (total_minutes + 60 * start_hour - hours * 60)
+        minutes = (total_minutes + 60 * START_HOUR - hours * 60)
         formatted_time = f"{hour:02d}:{minutes:02d}"
         annotations.append((
             formatted_time,
@@ -108,7 +109,7 @@ def run_simulation(options: Options) -> None:
             offset,
         ))
 
-    while day < 8 or hour < 18:
+    while day < END_DAY or hour < 18:
         minute += 1
         if minute == 60:
             hour += 1
@@ -126,7 +127,7 @@ def run_simulation(options: Options) -> None:
 
         if on:
             battery_wh -= options.project_w / 60
-        battery_wh -= arduino_w / 60
+        battery_wh -= ARDUINO_W / 60
         battery_wh += get_sunlight_percentage(hour, minute, options.std_dev) * options.solar_w / 60
 
         maxed = False
@@ -168,8 +169,13 @@ def run_simulation(options: Options) -> None:
 
     if has_matplot:
         plt.figure(figsize=(10, 5), num="Solar power simulation")
-        tick_positions = [m for m in range(total_minutes) if m % (6 * 60) == 0]
-        tick_labels = [f"{get_day((options.start_day * 24 * 60 + start_hour * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * start_hour) // 60) % 24:02d}:00" for m in tick_positions]
+        hours_to_skip = 6
+        if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
+            hours_to_skip = 12
+        if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
+            hours_to_skip = 24
+        tick_positions = [m for m in range(total_minutes) if m % (hours_to_skip * 60) == 0]
+        tick_labels = [f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00" for m in tick_positions]
 
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
             color = "darkorange" if start[1] else "black"
@@ -185,6 +191,9 @@ def run_simulation(options: Options) -> None:
 
         # Set custom ticks
         plt.xticks(tick_positions, tick_labels, rotation=60)
+        for pos, label in zip(tick_positions, tick_labels):
+            if "00:00" in label:
+                plt.axvline(x=pos, color="black", linestyle="--", linewidth=0.5)
         plt.xlabel("Time")
         plt.ylabel("Wh")
         off_p = options.off_battery_wh / options.max_battery_wh * 100
