@@ -59,6 +59,7 @@ class Options:
     project_w: float
     std_dev: float
     start_day: int
+    day_charge: bool
 
 
 def run_simulation(options: Options) -> None:
@@ -94,15 +95,18 @@ def run_simulation(options: Options) -> None:
 
     total_minutes = 0
     battery_wh_by_minute = []
-    toggle_power_times = [(0, True)]
+    # (minute, on, day charging)
+    toggle_power_times = [(0, True, False)]
     annotations = []
     first_loop = True
 
-    def add_annotation(minutes, battery_wh, offset):
+    def add_annotation(minutes: int, battery_wh: float, offset: float, type_: str | None = None) -> None:
         hours = (total_minutes + 60 * START_HOUR) // 60
         hour = hours % 24
         minutes = (total_minutes + 60 * START_HOUR - hours * 60)
         formatted_time = f"{hour:02d}:{minutes:02d}"
+        if type_:
+            formatted_time += " " + type_
         annotations.append((
             formatted_time,
             (total_minutes, battery_wh),
@@ -141,11 +145,20 @@ def run_simulation(options: Options) -> None:
             on = True
 
         increasing = battery_wh > previous_battery_wh
+
+        day_charge = False
+        if increasing and not previous_increasing and options.day_charge:
+            # Turn off until we hit the resume percent
+            if battery_wh < options.resume_battery_wh:
+                on = False
+                need_print = True
+                day_charge = True
+
         if increasing != previous_increasing and not maxed:
             need_print = True
         if on != previous_on:
             need_print = True
-            toggle_power_times.append((total_minutes, on))
+            toggle_power_times.append((total_minutes, on, day_charge))
             offset = (10, 0) if on else (-50, 0)
             add_annotation(total_minutes, battery_wh, offset)
         if maxed != previous_maxed:
@@ -159,13 +172,12 @@ def run_simulation(options: Options) -> None:
         previous_increasing = increasing
         previous_on = on
         previous_maxed = maxed
-        previous_hour = hour
         first_loop = False
 
     print(format_message())
 
     # Add one more so the zip below plots all the line segments
-    toggle_power_times.append((total_minutes, on))
+    toggle_power_times.append((total_minutes, on, False))
 
     if has_matplot:
         plt.figure(figsize=(10, 5), num="Solar power simulation")
@@ -178,8 +190,15 @@ def run_simulation(options: Options) -> None:
         tick_labels = [f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00" for m in tick_positions]
 
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
-            color = "darkorange" if start[1] else "black"
-            plt.plot(range(start[0], end[0]), battery_wh_by_minute[start[0]:end[0]], color=color)
+            minute, on, day_charge = start
+            if day_charge:
+                color = "blue"
+            elif on:
+                color = "darkorange"
+            else:
+                color = "black"
+            end_minute = end[0]
+            plt.plot(range(minute, end_minute), battery_wh_by_minute[minute:end_minute], color=color)
 
         for message, position, offset in annotations:
             plt.annotate(
@@ -194,6 +213,7 @@ def run_simulation(options: Options) -> None:
         for pos, label in zip(tick_positions, tick_labels):
             if "00:00" in label:
                 plt.axvline(x=pos, color="black", linestyle="--", linewidth=0.5)
+        plt.ylim(bottom=0)
         plt.xlabel("Time")
         plt.ylabel("Wh")
         off_p = options.off_battery_wh / options.max_battery_wh * 100
@@ -268,6 +288,12 @@ def make_parser() -> ArgumentParser:
         help="Standard deviation for solar radiation curve.",
         default=DEFAULT_STD_DEV,
     )
+    parser.add_argument(
+        "--day-charge",
+        help="Instead of shutting off when it gets low, shut off in the morning and charge during the day",
+        default=False,
+        action="store_true",
+    )
     return parser
 
 
@@ -279,6 +305,11 @@ if __name__ == "__main__":
         sys.stderr.flush()
         parser.print_help()
         sys.exit()
+    if namespace.resume_battery < 1 or namespace.resume_battery > 100:
+        sys.stderr.write(f"Bad battery percentage: {namespace.resume_battery}, should be 1 < % < 100\n")
+        sys.stderr.flush()
+        parser.print_help()
+        sys.exit()
     if namespace.project_w and namespace.project_w < IDLE_W:
         # Not an error, but we should print a warning
         sys.stderr.write(f"Warning: project W {namespace.project_w:0.2f} is unrealistically below idle W {IDLE_W:0.2f}\n")
@@ -287,7 +318,7 @@ if __name__ == "__main__":
         sys.stderr.flush()
         parser.print_help()
         sys.exit()
-    if namespace.min_battery > namespace.resume_battery:
+    if namespace.min_battery >= namespace.resume_battery:
         sys.stderr.write(f"Resume battery ({namespace.resume_battery}) needs to be less than min battery ({namespace.min_battery})\n")
         sys.stderr.flush()
         parser.print_help()
@@ -305,6 +336,10 @@ if __name__ == "__main__":
     else:
         project_w = (DEFAULT_W - IDLE_W) * namespace.brightness / 100 + IDLE_W
 
+    # Avoid floating point errors
+    if namespace.resume_battery == 100:
+        namespace.resume_battery = 99.999
+
     options = Options(
         solar_w=namespace.solar_w,
         max_battery_wh=namespace.battery_wh,
@@ -313,6 +348,7 @@ if __name__ == "__main__":
         project_w=project_w,
         std_dev=namespace.std_dev,
         start_day=namespace.start_day,
+        day_charge=namespace.day_charge,
     )
 
     # https://www.turbinegenerator.org/solar/colorado/ claims that southern
@@ -331,6 +367,8 @@ if __name__ == "__main__":
     print(f"- Off battery: {percent:0.0f}% / {options.off_battery_wh} Wh")
     percent = options.resume_battery_wh / options.max_battery_wh * 100
     print(f"- Resume battery: {percent:0.0f}% / {options.resume_battery_wh} Wh")
+    if options.day_charge:
+        print(f"- Charging during the day until we hit the resume battery level")
     print(f"- Solar power: {options.solar_w} W")
     print(f"- Solar power std dev: {options.std_dev:0.2f}")
     percent = (options.project_w - IDLE_W) / (DEFAULT_W - IDLE_W) * 100
