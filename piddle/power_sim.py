@@ -145,12 +145,17 @@ def run_simulation(options: Options) -> None:
         increasing = battery_wh > previous_battery_wh
 
         day_charge = False
-        if options.day_charge_hour is not None and hour == options.day_charge_hour and minute == options.day_charge_minute:
-            # Turn off until we hit the resume percent
-            if battery_wh < options.resume_battery_wh:
-                on = False
-                need_print = True
-                day_charge = True
+        if options.day_charge_hour is not None:
+            if hour == options.day_charge_hour and minute == options.day_charge_minute:
+                # Turn off until we hit the resume percent
+                if battery_wh < options.resume_battery_wh:
+                    on = False
+                    need_print = True
+                    day_charge = True
+            # We can't charge after ~6 PM, so just forcibly turn it back on
+            elif hour >= 18:
+                on = True
+                day_charge = False
 
         if increasing != previous_increasing and not maxed:
             need_print = True
