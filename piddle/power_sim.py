@@ -3,6 +3,7 @@ from argparse import ArgumentParser, ArgumentDefaultsHelpFormatter
 from dataclasses import dataclass
 from enum import Enum
 import math
+import re
 import sys
 
 has_matplot = False
@@ -59,7 +60,8 @@ class Options:
     project_w: float
     std_dev: float
     start_day: int
-    day_charge: bool
+    day_charge_hour: int | None
+    day_charge_minute: int | None
 
 
 def run_simulation(options: Options) -> None:
@@ -72,12 +74,13 @@ def run_simulation(options: Options) -> None:
     day = options.start_day
     START_HOUR = 12
     END_DAY = 8 if options.start_day == 0 else 7
-    hour = START_HOUR
+    # Start at minute - 1 so that the first message we print starts at 12:00
+    hour = START_HOUR - 1
+    minute = 59
 
     previous_increasing = False
     previous_on = True
     previous_maxed = True
-    minute = 59
 
     def format_message() -> None:
         message = f"{get_day(day)} {hour:02d}:{minute:02d}"
@@ -100,13 +103,8 @@ def run_simulation(options: Options) -> None:
     annotations = []
     first_loop = True
 
-    def add_annotation(minutes: int, battery_wh: float, offset: float, type_: str | None = None) -> None:
-        hours = (total_minutes + 60 * START_HOUR) // 60
-        hour = hours % 24
-        minutes = (total_minutes + 60 * START_HOUR - hours * 60)
-        formatted_time = f"{hour:02d}:{minutes:02d}"
-        if type_:
-            formatted_time += " " + type_
+    def add_annotation(hour: int, minute: int, battery_wh: float, offset: float) -> None:
+        formatted_time = f"{hour:02d}:{minute:02d}"
         annotations.append((
             formatted_time,
             (total_minutes, battery_wh),
@@ -147,7 +145,7 @@ def run_simulation(options: Options) -> None:
         increasing = battery_wh > previous_battery_wh
 
         day_charge = False
-        if increasing and not previous_increasing and options.day_charge:
+        if options.day_charge_hour is not None and hour == options.day_charge_hour and minute == options.day_charge_minute:
             # Turn off until we hit the resume percent
             if battery_wh < options.resume_battery_wh:
                 on = False
@@ -160,11 +158,11 @@ def run_simulation(options: Options) -> None:
             need_print = True
             toggle_power_times.append((total_minutes, on, day_charge))
             offset = (10, 0) if on else (-50, 0)
-            add_annotation(total_minutes, battery_wh, offset)
+            add_annotation(hour, minute, battery_wh, offset)
         if maxed != previous_maxed:
             need_print = True
             offset = (-50, 0) if maxed else (10, 0)
-            add_annotation(total_minutes, battery_wh, offset)
+            add_annotation(hour, minute, battery_wh, offset)
 
         if need_print:
             print(format_message())
@@ -290,9 +288,9 @@ def make_parser() -> ArgumentParser:
     )
     parser.add_argument(
         "--day-charge",
-        help="Instead of shutting off when it gets low, shut off in the morning and charge during the day",
-        default=False,
-        action="store_true",
+        help="Instead of shutting off when it gets low, shut off in the morning at the given time and charge during the day",
+        type=str,
+        default=None,
     )
     return parser
 
@@ -300,36 +298,42 @@ def make_parser() -> ArgumentParser:
 if __name__ == "__main__":
     parser = make_parser()
     namespace = parser.parse_args()
+    
+    def print_error(error: str) -> None:
+        sys.stderr.write(error)
+        sys.stderr.write("\n")
+        sys.stderr.flush()
+        parser.print_help()
+        sys.exit()
+
+    if namespace.day_charge is not None and not re.match(r"\d{1,2}:\d{2}", namespace.day_charge):
+        print_error(f"Bad day charge time: {namespace.day_charge}, should be e.g. 12:00")
+    if namespace.day_charge is not None:
+        day_charge_hour = int(namespace.day_charge.split(":")[0])
+        day_charge_minute = int(namespace.day_charge.split(":")[1])
+    else:
+        day_charge_hour = None
+        day_charge_minute = None
+
     if namespace.min_battery < 1 or namespace.min_battery > 100:
-        sys.stderr.write(f"Bad battery percentage: {namespace.min_battery}, should be 1 < % < 100\n")
-        sys.stderr.flush()
-        parser.print_help()
-        sys.exit()
+        print_error(f"Bad battery percentage: {namespace.min_battery}, should be 1 < % < 100")
     if namespace.resume_battery < 1 or namespace.resume_battery > 100:
-        sys.stderr.write(f"Bad battery percentage: {namespace.resume_battery}, should be 1 < % < 100\n")
-        sys.stderr.flush()
-        parser.print_help()
-        sys.exit()
+        print_error(f"Bad battery percentage: {namespace.resume_battery}, should be 1 < % < 100")
     if namespace.project_w and namespace.project_w < IDLE_W:
         # Not an error, but we should print a warning
-        sys.stderr.write(f"Warning: project W {namespace.project_w:0.2f} is unrealistically below idle W {IDLE_W:0.2f}\n")
+        sys.stderr.write(f"Warning: project W {namespace.project_w:0.2f} is unrealistically below idle W {IDLE_W:0.2f}")
     if namespace.project_w is not None and namespace.brightness != 100:
-        sys.stderr.write("Can only specify one of project-w and brightness")
-        sys.stderr.flush()
-        parser.print_help()
-        sys.exit()
+        print_error("Can only specify one of project-w and brightness")
     if namespace.min_battery >= namespace.resume_battery:
-        sys.stderr.write(f"Resume battery ({namespace.resume_battery}) needs to be less than min battery ({namespace.min_battery})\n")
-        sys.stderr.flush()
-        parser.print_help()
-        sys.exit()
-    # Over 100 is okay, because my "max" is based on 1 measurement from
+        print_error(f"Resume battery ({namespace.resume_battery}) needs to be less than min battery ({namespace.min_battery})")
+    if day_charge_hour is not None and not (6 <= day_charge_hour <= 15):
+        print_error(f"Day charge is {namespace.day_charge} but should be between 06:00 and 16:00")
+    if day_charge_minute is not None and not (0 <= day_charge_minute <= 59):
+        print_error(f"Day charge minute is {day_charge_minute} but should be in [0..59]")
+    # Over 100 brightness is okay, because my "max" is based on 1 measurement from
     # responding to a song, and other songs might make more LEDs light up
     if namespace.brightness < 2:  # Check < 2 in case someone enters .5 instead of 50
-        sys.stderr.write(f"Brightness too low: {namespace.brightness}\n")
-        sys.stderr.flush()
-        parser.print_help()
-        sys.exit()
+        print_error(f"Brightness too low: {namespace.brightness}")
 
     if namespace.project_w is not None:
         project_w = namespace.project_w
@@ -348,7 +352,8 @@ if __name__ == "__main__":
         project_w=project_w,
         std_dev=namespace.std_dev,
         start_day=namespace.start_day,
-        day_charge=namespace.day_charge,
+        day_charge_hour=day_charge_hour,
+        day_charge_minute=day_charge_minute,
     )
 
     # https://www.turbinegenerator.org/solar/colorado/ claims that southern
@@ -367,8 +372,8 @@ if __name__ == "__main__":
     print(f"- Off battery: {percent:0.0f}% / {options.off_battery_wh} Wh")
     percent = options.resume_battery_wh / options.max_battery_wh * 100
     print(f"- Resume battery: {percent:0.0f}% / {options.resume_battery_wh} Wh")
-    if options.day_charge:
-        print(f"- Charging during the day until we hit the resume battery level")
+    if day_charge_hour is not None:
+        print(f"- Charging during the day starting at {namespace.day_charge} until we hit the resume battery level")
     print(f"- Solar power: {options.solar_w} W")
     print(f"- Solar power std dev: {options.std_dev:0.2f}")
     percent = (options.project_w - IDLE_W) / (DEFAULT_W - IDLE_W) * 100
