@@ -62,6 +62,9 @@ class Options:
     start_day: int
     day_charge_hour: int | None
     day_charge_minute: int | None
+    day_charge_until_hour: int | None
+    day_charge_until_minute: int | None
+    always_day_charge: bool
 
 
 def run_simulation(options: Options) -> None:
@@ -95,6 +98,7 @@ def run_simulation(options: Options) -> None:
 
     on = True
     maxed = False
+    day_charge = False
 
     total_minutes = 0
     battery_wh_by_minute = []
@@ -127,7 +131,7 @@ def run_simulation(options: Options) -> None:
         battery_wh_by_minute.append(battery_wh)
         previous_battery_wh = battery_wh
 
-        if on:
+        if on and not day_charge:
             battery_wh -= options.project_w / 60
         battery_wh -= ARDUINO_W / 60
         battery_wh += get_sunlight_percentage(hour, minute, options.std_dev) * options.solar_w / 60
@@ -139,21 +143,27 @@ def run_simulation(options: Options) -> None:
             battery_wh = options.max_battery_wh
             maxed = True
 
-        if battery_wh > options.resume_battery_wh:
+        if battery_wh > options.resume_battery_wh and not options.always_day_charge:
             on = True
+            day_charge = False
 
         increasing = battery_wh > previous_battery_wh
 
-        day_charge = False
         if options.day_charge_hour is not None:
             if hour == options.day_charge_hour and minute == options.day_charge_minute:
                 # Turn off until we hit the resume percent
-                if battery_wh < options.resume_battery_wh:
+                if battery_wh < options.resume_battery_wh or options.always_day_charge:
                     on = False
                     need_print = True
                     day_charge = True
             # We can't charge after ~6 PM, so just forcibly turn it back on
-            elif hour >= 18:
+            elif day_charge and (
+                hour >= 18 or (
+                    options.day_charge_until_hour is not None
+                    and hour == options.day_charge_until_hour
+                    and minute == options.day_charge_until_minute
+                )
+            ):
                 on = True
                 day_charge = False
 
@@ -216,6 +226,40 @@ def run_simulation(options: Options) -> None:
         for pos, label in zip(tick_positions, tick_labels):
             if "00:00" in label:
                 plt.axvline(x=pos, color="black", linestyle="--", linewidth=0.5)
+
+        yticks = []
+        yticks.append((
+            options.off_battery_wh,
+            f"{int(options.off_battery_wh)} ({int(options.off_battery_wh / options.max_battery_wh * 100)}%)"
+        ))
+        yticks.append((
+            options.resume_battery_wh,
+            f"{int(options.resume_battery_wh)} ({int(options.resume_battery_wh / options.max_battery_wh * 100)}%)"
+        ))
+        for i in range(5):
+            candidate = i * options.max_battery_wh / 4
+            keep = True
+            blank = False
+            for yt in yticks[:2]:
+                # If it's exactly the same, don't keep it at all
+                if math.fabs(candidate - yt[0]) < .0001 * options.max_battery_wh:
+                    keep = False
+                    break
+                # Don't add labels but to add ticks if they're close to the off and resume ticks
+                if math.fabs(candidate - yt[0]) < .05 * options.max_battery_wh:
+                    blank = True
+                    break
+
+            if keep:
+                if blank:
+                    yticks.append((candidate, ""))
+                else:
+                    yticks.append((candidate, (str(int(candidate)))))
+
+        plt.yticks([yt[0] for yt in yticks], [yt[1] for yt in yticks])
+
+        plt.axhline(y=options.resume_battery_wh, color="gray", linestyle="--", linewidth=0.5, alpha=0.7)
+        plt.axhline(y=options.off_battery_wh, color="gray", linestyle="--", linewidth=0.5, alpha=0.7)
         plt.ylim(bottom=0)
         plt.xlabel("Time")
         plt.ylabel("Wh")
@@ -297,28 +341,58 @@ def make_parser() -> ArgumentParser:
         type=str,
         default=None,
     )
+    parser.add_argument(
+        "--day-charge-until",
+        help="When to shut off the day charge",
+        type=str,
+        default=None,
+    )
+    parser.add_argument(
+        "--always-day-charge",
+        help="Always day charge, even if the battery is above the resume percentage",
+        action="store_true",
+    )
     return parser
 
 
 if __name__ == "__main__":
     parser = make_parser()
     namespace = parser.parse_args()
-    
+
     def print_error(error: str) -> None:
-        sys.stderr.write(error)
-        sys.stderr.write("\n")
+        sys.stderr.write("Error: " + error + "\n")
         sys.stderr.flush()
-        parser.print_help()
         sys.exit()
 
     if namespace.day_charge is not None and not re.match(r"\d{1,2}:\d{2}", namespace.day_charge):
-        print_error(f"Bad day charge time: {namespace.day_charge}, should be e.g. 12:00")
+        print_error(f"Bad day charge time: {namespace.day_charge}, should be e.g. 13:00")
     if namespace.day_charge is not None:
         day_charge_hour = int(namespace.day_charge.split(":")[0])
         day_charge_minute = int(namespace.day_charge.split(":")[1])
     else:
         day_charge_hour = None
         day_charge_minute = None
+
+    if namespace.day_charge_until is not None and not re.match(r"\d{1,2}:\d{2}", namespace.day_charge_until):
+        print_error(f"Bad day charge until time: {namespace.day_charge_until}, should be e.g. 13:00")
+    if namespace.day_charge_until is not None:
+        day_charge_until_hour = int(namespace.day_charge_until.split(":")[0])
+        day_charge_until_minute = int(namespace.day_charge_until.split(":")[1])
+    else:
+        day_charge_until_hour = None
+        day_charge_until_minute = None
+
+    if day_charge_hour is not None and day_charge_until_hour is not None:
+        if (
+            day_charge_hour > day_charge_until_hour or (
+                day_charge_hour == day_charge_until_hour
+                and day_charge_minute >= day_charge_until_minute
+            )
+        ):
+            print_error(f"Day charge ({namespace.day_charge}) must be before until charge ({namespace.day_charge_until})")
+
+    if namespace.always_day_charge and namespace.day_charge_until is None:
+        print_error(f"always-day-charge can only be used with day-charge-until")
 
     if namespace.min_battery < 1 or namespace.min_battery > 100:
         print_error(f"Bad battery percentage: {namespace.min_battery}, should be 1 < % < 100")
@@ -359,6 +433,9 @@ if __name__ == "__main__":
         start_day=namespace.start_day,
         day_charge_hour=day_charge_hour,
         day_charge_minute=day_charge_minute,
+        day_charge_until_hour=day_charge_until_hour,
+        day_charge_until_minute=day_charge_until_minute,
+        always_day_charge=namespace.always_day_charge,
     )
 
     # https://www.turbinegenerator.org/solar/colorado/ claims that southern
@@ -378,7 +455,7 @@ if __name__ == "__main__":
     percent = options.resume_battery_wh / options.max_battery_wh * 100
     print(f"- Resume battery: {percent:0.0f}% / {options.resume_battery_wh} Wh")
     if day_charge_hour is not None:
-        print(f"- Charging during the day starting at {namespace.day_charge} until we hit the resume battery level")
+        print(f"- Charging during the day starting at {namespace.day_charge}")
     print(f"- Solar power: {options.solar_w} W")
     print(f"- Solar power std dev: {options.std_dev:0.2f}")
     percent = (options.project_w - IDLE_W) / (DEFAULT_W - IDLE_W) * 100
