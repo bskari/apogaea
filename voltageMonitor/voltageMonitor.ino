@@ -1,3 +1,4 @@
+#include <cstdint>
 //////////////////////////////////////////////
 //        RemoteXY include library          //
 //////////////////////////////////////////////
@@ -5,15 +6,7 @@
 // you can enable debug logging to Serial at 115200
 //#define REMOTEXY__DEBUGLOG
 
-// RemoteXY select connection mode and include library
-#define REMOTEXY_MODE__ESP32CORE_BLE
-
-#include <BLEDevice.h>
-
-// RemoteXY connection settings
-#define REMOTEXY_BLUETOOTH_NAME "voltage"
-
-
+#include "BLEDevice.h"
 #include <RemoteXY.h>
 
 // RemoteXY GUI configuration
@@ -64,8 +57,10 @@ struct {
   #define LED_BUILTIN 2
 #endif
 
-static const int VOLTAGE_PIN = 34;
-static const int RELAY_PIN = 32;
+static const int VOLTAGE_PIN = 4;
+static const int RELAY_PIN = 5;
+
+CRemoteXY* remotexy;
 
 // According to https://shopsolarkits.com/blogs/learning-center/marine-battery-voltage-chart,
 // 12.2V is 50% capacity, 12.0V is 25%, 11.98 is 20%, 11.90 is 0%
@@ -83,39 +78,53 @@ static bool show = false;
 static float adcSlopeCorrection = 0.0f;
 static float adcInterceptCorrection = 0.0f;
 
-float adcReadingToVoltage(float rawAdc);
-float voltageToUndividedVoltage(float voltage);
-float correctedVoltage(float voltage);
-constexpr float voltageToPercent(float voltage);
-constexpr float sliderToVoltage(int slider);
-void updateRemoteXY(const State state, const float battery_v);
-
-void IRAM_ATTR buttonInterrupt() {
-  show = true;
-}
+static float adcReadingToVoltage(float rawAdc);
+static float voltageToUndividedVoltage(float voltage);
+static float correctedVoltage(float voltage);
+static constexpr float voltageToPercent(float voltage);
+static constexpr float sliderToVoltage(int slider);
+static void updateRemoteXY(const State state, const float battery_v);
+static int test();
 
 constexpr float sliderToVoltage(const int slider) {
-  // Map to 11.98V-12.2V, or 20%-50%
-  return static_cast<float>(slider) / 100.f * (12.2f - 11.98f) + 11.98f;
+  // Map to 12.0V-13.1V, or 10%-60%
+  return static_cast<float>(slider) / 100.f * (13.1f - 12.0f) + 12.0f;
 }
 
 constexpr float voltageToPercent(const float voltage) {
-  // https://www.emarineinc.com/Marine-Batteries-Maintenance-101
-  if (voltage >= 12.4f) {
-    return (voltage - 12.4f) / 0.06f * 5.0f + 75.0f;
+  // https://www.renogy.com/blog/lifepo4-voltage-chart
+  // Note that this chart (and others) list both 40% and 50% as 13.0V
+  if (voltage >= 13.4f) {
+    return (voltage - 13.4f) / (13.6f - 13.4f) * (100.0f - 90.0f) + 90.0f;
+  }
+  if (voltage >= 13.0f) {
+    return (voltage - 13.0f) / (13.4f - 13.0f) * (90.0f - 50.0f) + 50.0f;
+  }
+  if (voltage >= 12.8f) {
+    return (voltage - 12.8f) / (13.0f - 12.8f) * (40.0f - 20.0f) + 20.0f;
   }
   if (voltage >= 12.0f) {
-    return (voltage - 12.0f) / 0.04f * 5.0f + 25.0f;
+    return (voltage - 12.0f) / (12.8f - 12.0f) * (20.0f - 10.0f) + 10.0f;
   }
-  if (voltage >= 11.9f) {
-    return (voltage - 11.9f) / 0.02f * 5.0f;
-  }
-  return 0.0f;
+  return (voltage - 10.0f) / (12.0f - 10.0f) * (10.0f - 0.0f) + 0.0f;
 }
 
 
 void setup() {
   Serial.begin(115200);
+  const int failCount = test();
+  if (failCount > 0) {
+    while (1) {
+      test();
+      delay(5000);
+    }
+  }
+
+  remotexy = new CRemoteXY(
+    RemoteXY_CONF_PROGMEM,
+    &RemoteXY,
+    new CRemoteXYStream_BLEDevice("voltage")
+  );
 
   pinMode(RELAY_PIN, OUTPUT);
 
@@ -124,34 +133,46 @@ void setup() {
 
   pinMode(VOLTAGE_PIN, INPUT);
 
-  // The boot button is connected to GPIO0
-  pinMode(0, INPUT);
-  attachInterrupt(0, buttonInterrupt, FALLING);
-
   // Calculate a line of best fit from ADC reports and ones from my multimeter
-  constexpr float multimeterReadings_v[] = {11.98, 11.97, 12.47, 12.43, 12.80, 12.67, 12.88, 12.76, 12.49};
-  constexpr float adcReadings_v[] =  {11.60, 11.59, 12.16, 12.12, 12.50, 12.35, 12.60, 12.44, 12.12};
+  constexpr float multimeterReadings_v[] = {13.21};
+  constexpr float adcReadings_v[] = {14.67};
   static_assert(COUNT_OF(multimeterReadings_v) == COUNT_OF(adcReadings_v));
-  float sum_x = 0, sum_y = 0, sum_xy = 0, sum_x2 = 0;
-  const int n = COUNT_OF(multimeterReadings_v);
-  for (int i = 0; i < n; i++) {
-    sum_x += adcReadings_v[i];
-    sum_y += multimeterReadings_v[i];
-    sum_xy += adcReadings_v[i] * multimeterReadings_v[i];
-    sum_x2 += adcReadings_v[i] * adcReadings_v[i];
+  if (COUNT_OF(multimeterReadings_v) == 0) {
+    adcSlopeCorrection = 1.0f;
+    adcInterceptCorrection = 0.0f;
+  } else if (COUNT_OF(multimeterReadings_v) == 1) {
+    adcSlopeCorrection = 1.0f;
+    adcInterceptCorrection = multimeterReadings_v[0] - adcReadings_v[0];
+  } else {
+    float sum_x = 0, sum_y = 0, sum_xy = 0, sum_x2 = 0;
+    const int n = COUNT_OF(multimeterReadings_v);
+    for (int i = 0; i < n; i++) {
+      sum_x += adcReadings_v[i];
+      sum_y += multimeterReadings_v[i];
+      sum_xy += adcReadings_v[i] * multimeterReadings_v[i];
+      sum_x2 += adcReadings_v[i] * adcReadings_v[i];
+    }
+    adcSlopeCorrection = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
+    adcInterceptCorrection = (sum_y - adcSlopeCorrection * sum_x) / n;
+    Serial.printf("true V = %f * adc V + %f\n", adcSlopeCorrection, adcInterceptCorrection);
+    for (int i = 0; i < COUNT_OF(multimeterReadings_v); ++i) {
+      const float corrected = correctedVoltage(adcReadings_v[i]);
+      Serial.printf(
+        "true V:%0.2f adc V:%0.2f corrected:%0.2f diff:%0.4f\n",
+        multimeterReadings_v[i],
+        adcReadings_v[i],
+        corrected,
+        multimeterReadings_v[i] - corrected
+      );
+    }
   }
-  adcSlopeCorrection = (n * sum_xy - sum_x * sum_y) / (n * sum_x2 - sum_x * sum_x);
-  adcInterceptCorrection = (sum_y - adcSlopeCorrection * sum_x) / n;
-  Serial.printf("true V = %f * adc V + %f\n", adcSlopeCorrection, adcInterceptCorrection);
-  for (int i = 0; i < COUNT_OF(multimeterReadings_v); ++i) {
-    const float corrected = correctedVoltage(adcReadings_v[i]);
-    Serial.printf(
-      "true V:%0.2f adc V:%0.2f corrected:%0.2f diff:%0.4f\n",
-      multimeterReadings_v[i],
-      adcReadings_v[i],
-      corrected,
-      multimeterReadings_v[i] - corrected
-    );
+  if (adcSlopeCorrection != adcSlopeCorrection) {
+    adcSlopeCorrection = 1.0f;
+    Serial.println("adcSlopeCorrection is nan, resetting");
+  }
+  if (adcInterceptCorrection != adcInterceptCorrection) {
+    adcInterceptCorrection = 0.0f;
+    Serial.println("adcInterceptCorrection is nan, resetting");
   }
 
   // If the battery is good, then turn on the LEDs immediately
@@ -168,11 +189,10 @@ void setup() {
 
   setCpuFrequencyMhz(80);
 
-  RemoteXY_Init();
+  //RemoteXY_Init();
 
-  constexpr float defaultOffVoltage = 12.0f;
-  // It's a coincidence that defaultSlider matches the defaultOffVoltage
-  constexpr int defaultOffVoltageSlider = 12;
+  constexpr float defaultOffVoltage = 12.4f;
+  constexpr int defaultOffVoltageSlider = 45;
   RemoteXY.offVoltageSlider = defaultOffVoltageSlider;
   constexpr float offVoltage = sliderToVoltage(defaultOffVoltageSlider);
   RemoteXY.offVoltage = offVoltage;
@@ -181,13 +201,13 @@ void setup() {
   static_assert(offVoltage <= defaultOffVoltage + 0.1f);
   constexpr float offPercent = voltageToPercent(offVoltage);
   RemoteXY.offPercent = offPercent;
-  // Should be 25%
-  constexpr float expectedCutoffPercent = 25.0f;
+  // Should be 16%
+  constexpr float expectedCutoffPercent = 16.0f;
   static_assert(expectedCutoffPercent - 1.0f <= offPercent);
   static_assert(offPercent <= expectedCutoffPercent + 1.0f);
 
-  constexpr float defaultResumeVoltage = 12.12f;
-  constexpr int defaultResumeVoltageSlider = 65;
+  constexpr float defaultResumeVoltage = 13.0f;  // ~50%
+  constexpr int defaultResumeVoltageSlider = 85;
   RemoteXY.resumeVoltageSlider = defaultResumeVoltageSlider;
   constexpr float resumeVoltage = sliderToVoltage(defaultResumeVoltageSlider);
   RemoteXY.resumeVoltage = resumeVoltage;
@@ -196,8 +216,8 @@ void setup() {
   static_assert(resumeVoltage <= defaultResumeVoltage + 0.1f);
   constexpr float resumePercent = voltageToPercent(resumeVoltage);
   RemoteXY.resumePercent = resumePercent;
-  // Should be 40%
-  constexpr float expectedResumePercent = 40.0f;
+  // Should be 33%
+  constexpr float expectedResumePercent = 33.0f;
   static_assert(expectedResumePercent - 1.0f <= resumePercent);
   static_assert(resumePercent <= expectedResumePercent + 1.0f);
 
@@ -244,7 +264,12 @@ void loop() {
         adc_v,
         battery_v);
 
-      next_ms = millis() + 10000;
+      while (Serial.available()) {
+        const auto line = Serial.readStringUntil('\n');
+        Serial.println("Arduino says:");
+        Serial.println(line);
+      }
+      next_ms = millis() + 1000;
     }
 
     if (show) {
@@ -263,7 +288,7 @@ void loop() {
       show = false;
     }
 
-    // Only update the LEDs occasionally, to avoid flickering
+    // Only update the relay occasionally, to avoid thrashing
     if (millis() > relayToggleTime_ms + relayToggleDelay_ms) {
       relayToggleTime_ms = millis();
 
@@ -285,7 +310,7 @@ void loop() {
       }
     }
 
-    RemoteXY_Handler();
+    remotexy->handler();
     updateRemoteXY(state, correctedBattery_v);
   }
 }
@@ -327,23 +352,23 @@ void blinkNumber(const int count) {
     Serial.printf("Tried to blink %d\n", count);
     for (int i = 0; i < 10; ++i) {
       digitalWrite(LED_BUILTIN, HIGH);
-      RemoteXY_delay(50);
+      remotexy->delay(50);
       digitalWrite(LED_BUILTIN, LOW);
-      RemoteXY_delay(50);
+      remotexy->delay(50);
     }
   } else if (count == 0) {
     digitalWrite(LED_BUILTIN, HIGH);
-    RemoteXY_delay(500);
+    remotexy->delay(500);
     digitalWrite(LED_BUILTIN, LOW);
   } else {
     for (int i = 0; i < count; ++i) {
       digitalWrite(LED_BUILTIN, HIGH);
-      RemoteXY_delay(200);
+      remotexy->delay(200);
       digitalWrite(LED_BUILTIN, LOW);
-      RemoteXY_delay(200);
+      remotexy->delay(200);
     }
   }
-  RemoteXY_delay(500);
+  remotexy->delay(500);
 }
 
 float adcReadingToVoltage(const float adcReading) {
@@ -353,11 +378,47 @@ float adcReadingToVoltage(const float adcReading) {
 }
 
 float voltageToUndividedVoltage(const float voltage) {
-  const float R1 = 20000.0f;
-  const float R2 = 5100.0f;
-  return voltage * (R1 + R2) / R2;
+  // If you made your own voltage divider circuit, use this
+  // const float R1 = 20000.0f;
+  // const float R2 = 5100.0f;
+  // return voltage * (R1 + R2) / R2;
+
+  // If you're using a commercial module, just use the divider value
+  return voltage * 5.0f;
 }
 
 float correctedVoltage(const float voltage) {
   return voltage * adcSlopeCorrection + adcInterceptCorrection;
+}
+
+#define EXPECT(assertion) { \
+  ++test; \
+  if ((assertion)) { \
+    /* Serial.printf("%d passed\n", test); */ \
+  } else { \
+    Serial.printf("%d failed: %s\n", test, #assertion); \
+    ++fails; \
+  } \
+}
+#define ALMOST_EQUAL(a, b) { \
+  ++test; \
+  if ((a) - 0.001 < (b) && (a) + 0.001 > (b)) { \
+    /* Serial.printf("%d passed\n", test); */ \
+  } else { \
+    Serial.printf("%d failed: %s != %s\n", test, #a, #b); \
+    ++fails; \
+  } \
+}
+int test() {
+  int test = 0;
+  int fails = 0;
+  ALMOST_EQUAL(voltageToPercent(13.6f), 100.0f);
+  ALMOST_EQUAL(voltageToPercent(13.4f), 90.0f);
+  EXPECT(voltageToPercent(13.5f) > 90.0f);
+  EXPECT(voltageToPercent(13.5f) < 100.0f);
+  ALMOST_EQUAL(voltageToPercent(13.3f), 80.0f);
+  ALMOST_EQUAL(voltageToPercent(13.2f), 70.0f);
+  ALMOST_EQUAL(voltageToPercent(12.9f), 30.0f);
+  ALMOST_EQUAL(voltageToPercent(12.0f), 10.0f);
+  return fails;
 }
