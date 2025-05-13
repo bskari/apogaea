@@ -123,13 +123,15 @@ def run_simulation(options: Options) -> None:
     annotations = []
     first_loop = True
 
-    def add_annotation(hour: int, minute: int, battery_wh: float, offset: float) -> None:
-        formatted_time = f"{hour:02d}:{minute:02d}"
-        annotations.append((
-            formatted_time,
-            (total_minutes, battery_wh),
-            offset,
-        ))
+    def maybe_add_annotation(hour: int, minute: int, battery_wh: float, offset: float) -> None:
+        """Add an annotation if more than 10 minutes have passed since the previous."""
+        if len(annotations) == 0 or total_minutes - annotations[-1][1][0] > 10:
+            formatted_time = f"{hour:02d}:{minute:02d}"
+            annotations.append((
+                formatted_time,
+                (total_minutes, battery_wh),
+                offset,
+            ))
 
     while day < END_DAY or hour < 18:
         minute += 1
@@ -197,17 +199,22 @@ def run_simulation(options: Options) -> None:
         if on != previous_on:
             need_print = True
             toggle_power_times.append(TogglePower(total_minutes, on, day_charge, limited))
-            offset = (10, 0) if on else (-50, 0)
-            add_annotation(hour, minute, battery_wh, offset)
+            if limited:
+                offset = (-50, 0)
+            elif on:
+                offset = (10, 0)
+            else:
+                offset = (-50, 0)
+            maybe_add_annotation(hour, minute, battery_wh, offset)
         if maxed != previous_maxed:
             need_print = True
             offset = (-50, 0) if maxed else (10, 0)
-            add_annotation(hour, minute, battery_wh, offset)
+            maybe_add_annotation(hour, minute, battery_wh, offset)
         if limited != previous_limited:
             need_print = True
             toggle_power_times.append(TogglePower(total_minutes, on, day_charge, limited))
             offset = (-50, 0)
-            add_annotation(hour, minute, battery_wh, offset)
+            maybe_add_annotation(hour, minute, battery_wh, offset)
 
         if need_print:
             print(format_message())
@@ -234,10 +241,16 @@ def run_simulation(options: Options) -> None:
         tick_labels = [f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00" for m in tick_positions]
 
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
-            if start.limited:
-                color = "red"
-            elif start.day_charging:
-                color = "blue"
+            if start.day_charging:
+                if start.limited:
+                    color = "darkblue"
+                else:
+                    color = "blue"
+            elif start.limited:
+                if start.on:
+                    color = "red"
+                else:
+                    color = "purple"
             elif start.on:
                 color = "orange"
             else:
@@ -316,23 +329,22 @@ def make_parser() -> ArgumentParser:
         "--battery-wh",
         "-b",
         type=float,
-        help="The max battery capacity in Wh. My battery is 80 Ah @ 12 V = 960 Wh, but it's a few years old, so probably a little less.",
-        # 80% because it's a few years old
-        default=12 * 80 * 0.8,
+        help="The max battery capacity in Wh. 100 Ah @ 12.8 V = 1280 Wh.",
+        default=12.8 * 100,
     )
     parser.add_argument(
         "--solar-w",
         "-s",
         type=float,
-        help="The solar power in W. I have 200 W, but because of Colorado's latitude, they'll likely only produce ~90%% of their rated power.",
+        help="The solar power in W. I have 300 W, but because of Colorado's latitude, they'll likely only produce ~90%% of their rated power.",
         # 90% because we're not at the equator
-        default=200 * .9,
+        default=300 * .9,
     )
     parser.add_argument(
         "--max-charge-w",
         help="Max charge in W. If more power comes from the solar panels, it will be dropped.",
         type=float,
-        default=None,
+        default=138,
     )
     parser.add_argument(
         "--min-battery",
