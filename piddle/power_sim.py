@@ -5,6 +5,7 @@ from enum import Enum
 import math
 import re
 import sys
+import typing
 
 has_matplot = False
 try:
@@ -54,6 +55,7 @@ def get_day(index: int) -> str:
 @dataclass
 class Options:
     solar_w: float
+    max_charge_w: float | None
     max_battery_wh: float
     off_battery_wh: float
     resume_battery_wh: float
@@ -65,6 +67,14 @@ class Options:
     day_charge_until_hour: int | None
     day_charge_until_minute: int | None
     always_day_charge: bool
+
+@dataclass
+class TogglePower:
+    minute: int
+    on: bool
+    day_charging: bool
+    # Limited by the charge limit of the charge controller
+    limited: bool
 
 
 def run_simulation(options: Options) -> None:
@@ -84,6 +94,7 @@ def run_simulation(options: Options) -> None:
     previous_increasing = False
     previous_on = True
     previous_maxed = True
+    previous_limited = True
 
     def format_message() -> None:
         message = f"{get_day(day)} {hour:02d}:{minute:02d}"
@@ -91,6 +102,11 @@ def run_simulation(options: Options) -> None:
         message += f" {battery_wh:>7.2f} Wh {truncated_percent:>3.0f}%"
         if maxed:
             message += ' maxed'
+        if limited != previous_limited:
+            if limited:
+                message += ' limited'
+            else:
+                message += ' not limited'
         message += (' on' if on else ' off')
         if not maxed:
             message += (' in' if increasing else ' de') + "creasing"
@@ -99,11 +115,11 @@ def run_simulation(options: Options) -> None:
     on = True
     maxed = False
     day_charge = False
+    limited = False
 
     total_minutes = 0
     battery_wh_by_minute = []
-    # (minute, on, day charging)
-    toggle_power_times = [(0, True, False)]
+    toggle_power_times: typing.List[TogglePower] = [TogglePower(0, True, False, False)]
     annotations = []
     first_loop = True
 
@@ -134,7 +150,16 @@ def run_simulation(options: Options) -> None:
         if on and not day_charge:
             battery_wh -= options.project_w / 60
         battery_wh -= ARDUINO_W / 60
-        battery_wh += get_sunlight_percentage(hour, minute, options.std_dev) * options.solar_w / 60
+        solar_wh_increment = get_sunlight_percentage(hour, minute, options.std_dev) * options.solar_w / 60
+        if options.max_charge_w is None:
+            battery_wh += solar_wh_increment
+            limited = False
+        elif solar_wh_increment < options.max_charge_w / 60:
+            battery_wh += solar_wh_increment
+            limited = False
+        else:
+            battery_wh += options.max_charge_w / 60
+            limited = True
 
         maxed = False
         if battery_wh < options.off_battery_wh:
@@ -171,12 +196,17 @@ def run_simulation(options: Options) -> None:
             need_print = True
         if on != previous_on:
             need_print = True
-            toggle_power_times.append((total_minutes, on, day_charge))
+            toggle_power_times.append(TogglePower(total_minutes, on, day_charge, limited))
             offset = (10, 0) if on else (-50, 0)
             add_annotation(hour, minute, battery_wh, offset)
         if maxed != previous_maxed:
             need_print = True
             offset = (-50, 0) if maxed else (10, 0)
+            add_annotation(hour, minute, battery_wh, offset)
+        if limited != previous_limited:
+            need_print = True
+            toggle_power_times.append(TogglePower(total_minutes, on, day_charge, limited))
+            offset = (-50, 0)
             add_annotation(hour, minute, battery_wh, offset)
 
         if need_print:
@@ -185,12 +215,13 @@ def run_simulation(options: Options) -> None:
         previous_increasing = increasing
         previous_on = on
         previous_maxed = maxed
+        previous_limited = limited
         first_loop = False
 
     print(format_message())
 
     # Add one more so the zip below plots all the line segments
-    toggle_power_times.append((total_minutes, on, False))
+    toggle_power_times.append(TogglePower(total_minutes, on, False, False))
 
     if has_matplot:
         plt.figure(figsize=(10, 5), num="Solar power simulation")
@@ -203,15 +234,16 @@ def run_simulation(options: Options) -> None:
         tick_labels = [f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00" for m in tick_positions]
 
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
-            minute, on, day_charge = start
-            if day_charge:
+            print(start)
+            if start.limited:
+                color = "red"
+            elif start.day_charging:
                 color = "blue"
-            elif on:
-                color = "darkorange"
+            elif start.on:
+                color = "orange"
             else:
                 color = "black"
-            end_minute = end[0]
-            plt.plot(range(minute, end_minute), battery_wh_by_minute[minute:end_minute], color=color)
+            plt.plot(range(start.minute, end.minute), battery_wh_by_minute[start.minute:end.minute], color=color)
 
         for message, position, offset in annotations:
             plt.annotate(
@@ -266,7 +298,10 @@ def run_simulation(options: Options) -> None:
         off_p = options.off_battery_wh / options.max_battery_wh * 100
         on_p = options.resume_battery_wh / options.max_battery_wh * 100
         project_p = (options.project_w - IDLE_W) / (DEFAULT_W - IDLE_W) * 100
-        title = f"batt:{options.max_battery_wh:0.0f}Wh off:{off_p:0.0f}% on:{on_p:0.0f}% solar:{options.solar_w:0.0f}W power:{project_p:0.0f}%"
+        title = f"batt:{options.max_battery_wh:0.0f}Wh off:{off_p:0.0f}% on:{on_p:0.0f}% solar:{options.solar_w:0.0f}W"
+        if options.max_charge_w:
+            title += f" max:{options.max_charge_w:0.0f}W"
+        title += f" power:{project_p:0.0f}%"
         plt.title(title)
         mng = plt.get_current_fig_manager()
         mng.resize(*mng.window.maxsize())
@@ -293,6 +328,12 @@ def make_parser() -> ArgumentParser:
         help="The solar power in W. I have 200 W, but because of Colorado's latitude, they'll likely only produce ~90%% of their rated power.",
         # 90% because we're not at the equator
         default=200 * .9,
+    )
+    parser.add_argument(
+        "--max-charge-w",
+        help="Max charge in W. If more power comes from the solar panels, it will be dropped.",
+        type=float,
+        default=None,
     )
     parser.add_argument(
         "--min-battery",
@@ -436,6 +477,7 @@ if __name__ == "__main__":
         day_charge_until_hour=day_charge_until_hour,
         day_charge_until_minute=day_charge_until_minute,
         always_day_charge=namespace.always_day_charge,
+        max_charge_w=namespace.max_charge_w,
     )
 
     # https://www.turbinegenerator.org/solar/colorado/ claims that southern
