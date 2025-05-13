@@ -234,7 +234,6 @@ def run_simulation(options: Options) -> None:
         tick_labels = [f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00" for m in tick_positions]
 
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
-            print(start)
             if start.limited:
                 color = "red"
             elif start.day_charging:
