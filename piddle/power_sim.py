@@ -101,15 +101,13 @@ def run_simulation(options: Options) -> None:
         truncated_percent = int(battery_wh / options.max_battery_wh * 100)
         message += f" {battery_wh:>7.2f} Wh {truncated_percent:>3.0f}%"
         if maxed:
-            message += ' maxed'
+            message += " maxed"
+        message += (" on" if on else " off")
         if limited != previous_limited:
             if limited:
-                message += ' limited'
-            else:
-                message += ' not limited'
-        message += (' on' if on else ' off')
+                message += " limited"
         if not maxed:
-            message += (' in' if increasing else ' de') + "creasing"
+            message += (" in" if increasing else " de") + "creasing"
         return message
 
     on = True
