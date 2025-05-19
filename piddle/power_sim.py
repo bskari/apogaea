@@ -500,14 +500,15 @@ if __name__ == "__main__":
         sys.stderr.write("*** Warning! Your std-dev is too high and gives unrealistically high solar hours ***\n")
         sys.stderr.flush()
     print("Running simulation with:")
-    print(f"- Battery capacity: {options.max_battery_wh} Wh")
+    print(f"- Battery capacity: {options.max_battery_wh:0.0f} Wh")
     percent = options.off_battery_wh / options.max_battery_wh * 100
-    print(f"- Off battery: {percent:0.0f}% / {options.off_battery_wh} Wh")
+    print(f"- Off battery: {percent:0.0f}% / {options.off_battery_wh:0.0f} Wh")
     percent = options.resume_battery_wh / options.max_battery_wh * 100
-    print(f"- Resume battery: {percent:0.0f}% / {options.resume_battery_wh} Wh")
+    print(f"- Resume battery: {percent:0.0f}% / {options.resume_battery_wh:0.0f} Wh")
     if day_charge_hour is not None:
         print(f"- Charging during the day starting at {namespace.day_charge}")
-    print(f"- Solar power: {options.solar_w} W")
+    print(f"- Solar power: {options.solar_w:0.0f} W")
+    print(f"- Max charging speed: {options.max_charge_w:0.0f} W")
     print(f"- Solar power std dev: {options.std_dev:0.2f}")
     percent = (options.project_w - IDLE_W) / (DEFAULT_W - IDLE_W) * 100
     print(f"- Project power: {percent:0.0f}% brightness / {options.project_w:0.2f} W")
