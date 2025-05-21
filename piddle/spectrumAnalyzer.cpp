@@ -17,11 +17,6 @@
 #  define DOUBLE_ENDED 0
 #endif
 
-// Set this to 1 if you want to display the voltage on the LED strip, for testing
-#ifndef SHOW_VOLTAGE
-#  define SHOW_VOLTAGE 0
-#endif
-
 static const int I2S_SAMPLE_RATE_HZ = 44100; // Sample rate of the I2S microphone
 static const int MAX_I2S_BUFFER_LENGTH = 512;
 
@@ -60,10 +55,10 @@ extern I2SClocklessLedDriver driver;
 extern bool logDebug;
 
 static void computeFft();
-static void renderFft();
+static void renderFft(bool rainbow);
 static void slideDown(int count);
 static float maxOutputForNote(int note);
-static void normalizeTo0_1(float samples[], int length);
+static void normalizeTo0_1(float samples[], int length, uint8_t sensitivity);
 static void logOutputNotes();
 static void logNotes(const float noteValues[NOTE_COUNT]);
 static float aWeightingMultiplier(const float frequency);
@@ -71,9 +66,8 @@ static float windowingMultiplier(const int offset);
 static void powerOfTwo(float* const array, const int length);
 static constexpr float square(const float f);
 
-// Minimum divisor. The output from the FFT is squared, and we could sqrt it, but that's slow and
-// unnecessary, so just square this number. Lower this number to increase sensitivity.
-const float minimumDivisor = square(4000);
+void RemoteXY_delayFunction(int ms);
+
 
 static void computeFft() {
   // Windowing
@@ -105,7 +99,7 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft() {
+static void renderFft(bool rainbow) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
@@ -136,11 +130,18 @@ static void renderFft() {
     }
   }
 
+  static uint8_t rainbowOffset = 0;
   constexpr uint16_t hue16Step = 256 * 3;
   // Vary the start hue by a small sine wave
   const int quadWaveMillisDiv = 64;
   const int quadWaveDiv = 8;
-  const uint8_t hueStart = quadwave8(millis() / quadWaveMillisDiv) / quadWaveDiv - 20;
+  const uint8_t hueStart = [rainbow]() mutable {
+    if (rainbow) {
+      ++rainbowOffset;
+      return rainbowOffset;
+    }
+    return static_cast<uint8_t>(quadwave8(millis() / quadWaveMillisDiv) / quadWaveDiv - 20);
+  }();
   uint16_t hue16 = hueStart * 256;
   for (int note = startNote; note < COUNT_OF(noteValues) - 1; /* Increment done in loop */) {
     {
@@ -231,7 +232,12 @@ void collectSamples() {
   }
 }
 
-void displaySpectrumAnalyzer() {
+void displaySpectrumAnalyzer(
+  uint8_t brightness_p,
+  const bool rainbow,
+  const uint8_t sensitivity_p,
+  const uint8_t speed_p
+) {
   const decltype(millis()) logTime_ms = 5000;
   static auto next_ms = 1000;
   static int loopCount = 0;
@@ -289,46 +295,22 @@ void displaySpectrumAnalyzer() {
   for (int i = 0; i < COUNT_OF(output); ++i) {
     output[i] *= weightingConstants[i];
   }
-  normalizeTo0_1(output, SAMPLE_COUNT);
+  normalizeTo0_1(output, SAMPLE_COUNT, sensitivity_p);
   const auto compute_us = micros() - part_us;
 
   part_us = micros();
-  renderFft();
+  renderFft(rainbow);
   const auto render_us = micros() - part_us;
 
-  #if SHOW_VOLTAGE
-    // Testing, show voltage on the strip
-    int voltageIndex = LEDS_PER_STRIP / 2 - 10;
-    const int voltageBrightness = 16;
-    for (int i = 0; i < voltageOnes; ++i, ++voltageIndex) {
-      leds[STRIP_COUNT - 1][voltageIndex] = CRGB(voltageBrightness, 0, 0);
-    }
-    leds[STRIP_COUNT - 1][voltageIndex] = CRGB::Black;
-    ++voltageIndex;
-    for (int i = 0; i < voltageTenths; ++i, ++voltageIndex) {
-      if (i == 5) {
-        leds[STRIP_COUNT - 1][voltageIndex] = CRGB::Black;
-        ++voltageIndex;
-      }
-      leds[STRIP_COUNT - 1][voltageIndex] = CRGB(0, voltageBrightness, 0);
-    }
-    leds[STRIP_COUNT - 1][voltageIndex] = CRGB::Black;
-    ++voltageIndex;
-    for (int i = 0; i < voltageHundredths; ++i, ++voltageIndex) {
-      if (i == 5) {
-        leds[STRIP_COUNT - 1][voltageIndex] = CRGB::Black;
-        ++voltageIndex;
-      }
-      leds[STRIP_COUNT - 1][voltageIndex] = CRGB(0, 0, voltageBrightness);
-    }
-  #endif
-
+  const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
+  // My voltage converter can only output 10A, so limit to half of that
+  const int max_ma = 5000;
   const int limitedBrightness = calculate_max_brightness_for_power_vmA(
     reinterpret_cast<CRGB*>(leds),
     STRIP_COUNT * LEDS_PER_STRIP,
-    64,
+    sliderBrightness,
     12,
-    6000
+    max_ma
   );
   driver.setBrightness(limitedBrightness);
 
@@ -337,8 +319,8 @@ void displaySpectrumAnalyzer() {
   const auto show_us = micros() - part_us;
 
   // The animations are too fast, so add an artificial delay
-  const int delay_ms = 15;
-  delay(delay_ms);
+  const int delay_ms = 100 - speed_p;
+  RemoteXY_delayFunction(delay_ms);
 
   ++loopCount;
   if (millis() > next_ms) {
@@ -511,7 +493,7 @@ static float maxOutputForNote(const int note) {
 /**
  * Normalize the samples to [0..1], or lower if all the samples are low
  */
-static void normalizeTo0_1(float samples[], const int length) {
+static void normalizeTo0_1(float samples[], const int length, const uint8_t sensitivity) {
   float minSample = samples[0];
   for (int i = 1; i < length; ++i) {
     minSample = min(minSample, samples[i]);
@@ -523,6 +505,11 @@ static void normalizeTo0_1(float samples[], const int length) {
   for (int i = 1; i < length; ++i) {
     maxSample = max(maxSample, samples[i]);
   }
+  // Minimum divisor. The output from the FFT is squared, and we could sqrt it, but that's slow and
+  // unnecessary, so just square this number. Lower this number to increase sensitivity.
+  // 50% = 4000
+  const float minimumDivisor = square((130 - sensitivity) * 50);
+
   // Always have some divisor, in case all the values are low
   const float divisor = max(maxSample, minimumDivisor);
 
