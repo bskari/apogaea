@@ -147,9 +147,9 @@ static void renderFft(const bool rainbow, const bool normalizeBands) {
   // I'm having each color represent a different range. Red low, green mid, blue
   // high. So try normalizing each band? Or at least boost them a bit.
   if (normalizeBands) {
-    float allMaxValue = noteValues[note];
+    float allMaxValue = noteValues[0];
     for (int i = 0; i < STRIP_COUNT * 3; ++i) {
-      allMaxValue = max(allMaxValue, noteValues[note]);
+      allMaxValue = max(allMaxValue, noteValues[i]);
     }
     for (int range = 0; range < 3; ++range) {
       const int start = startNote + STRIP_COUNT * range;
