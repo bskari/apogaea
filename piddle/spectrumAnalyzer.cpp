@@ -145,8 +145,12 @@ static void renderFft(const bool rainbow, const bool normalizeBands) {
   }();
 
   // I'm having each color represent a different range. Red low, green mid, blue
-  // high. So try normalizing each band?
+  // high. So try normalizing each band? Or at least boost them a bit.
   if (normalizeBands) {
+    float allMaxValue = noteValues[note];
+    for (int i = 0; i < STRIP_COUNT * 3; ++i) {
+      allMaxValue = max(allMaxValue, noteValues[note]);
+    }
     for (int range = 0; range < 3; ++range) {
       const int start = startNote + STRIP_COUNT * range;
       const int end = start + STRIP_COUNT;
@@ -154,7 +158,9 @@ static void renderFft(const bool rainbow, const bool normalizeBands) {
       for (int note = start + 1; note < end; ++note) {
         maxValue = max(maxValue, noteValues[note]);
       }
-      const float inverse = 1.0f / maxValue;
+      // Average the allMaxValue and maxValue, that way if it's really quiet in
+      // one band, we're just boosting somewhat
+      const float inverse = 1.0f / ((maxValue + allMaxValue) * 0.5f);
       for (int note = start; note < end; ++note) {
         noteValues[note] *= inverse;
       }
