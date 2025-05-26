@@ -30,14 +30,15 @@
 
 // RemoteXY GUI configuration
 #pragma pack(push, 1)
-uint8_t RemoteXY_CONF[] =   // 126 bytes
-  { 255,4,0,0,0,119,0,19,0,0,0,0,24,1,126,200,1,1,8,0,
+uint8_t RemoteXY_CONF[] =   // 160 bytes
+  { 255,5,0,0,0,153,0,19,0,0,0,0,24,1,126,200,1,1,10,0,
   129,32,15,62,12,64,17,66,114,105,103,104,116,110,101,115,115,0,129,33,
   47,60,12,64,17,83,101,110,115,105,116,105,118,105,116,121,0,4,12,32,
   104,10,128,2,26,4,12,62,104,10,128,2,26,129,43,76,35,12,64,17,
-  83,112,101,101,100,0,4,12,90,104,10,128,2,26,2,41,160,44,22,1,
-  2,26,31,31,79,78,0,79,70,70,0,129,39,144,48,12,64,17,82,97,
-  105,110,98,111,119,0 };
+  83,112,101,101,100,0,4,12,90,104,10,128,2,26,2,71,115,30,12,1,
+  2,26,31,31,79,78,0,79,70,70,0,129,21,116,48,12,64,17,82,97,
+  105,110,98,111,119,0,2,75,134,30,12,1,2,26,31,31,79,78,0,79,
+  70,70,0,129,16,135,57,12,64,17,78,111,114,109,97,108,105,122,101,0 };
 
 // this structure defines all the variables and events of your control interface
 struct {
@@ -47,6 +48,7 @@ struct {
   int8_t sensitivitySlider; // from 0 to 100
   int8_t speedSlider; // from 0 to 100
   uint8_t rainbowSwitch; // =1 if switch ON and =0 if OFF
+  uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF
 
     // other variable
   uint8_t connect_flag;  // =1 if wire connected, else =0
@@ -99,6 +101,7 @@ void setup() {
   RemoteXY_Init();
   RemoteXY.brightnessSlider = 25;
   RemoteXY.rainbowSwitch = false;
+  RemoteXY.normalizeBandsSwitch = false;
   RemoteXY.speedSlider = 85;
   RemoteXY.sensitivitySlider = 50;
 
@@ -150,6 +153,7 @@ void displayLedsFunction(void*) {
       displaySpectrumAnalyzer(
         RemoteXY.brightnessSlider,
         RemoteXY.rainbowSwitch,
+        RemoteXY.normalizeBandsSwitch,
         RemoteXY.sensitivitySlider,
         RemoteXY.speedSlider);
 

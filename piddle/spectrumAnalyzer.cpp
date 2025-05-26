@@ -55,10 +55,10 @@ extern I2SClocklessLedDriver driver;
 extern bool logDebug;
 
 static void computeFft();
-static void renderFft(bool rainbow);
+static void renderFft(bool rainbow, bool normalizeBands);
 static void slideDown(int count);
 static float maxOutputForNote(int note);
-static void normalizeTo0_1(float samples[], int length, uint8_t sensitivity);
+static void normalizeTo0_1(float samples[], int length, float minimumDivisor);
 static void logOutputNotes();
 static void logNotes(const float noteValues[NOTE_COUNT]);
 static float aWeightingMultiplier(const float frequency);
@@ -99,7 +99,7 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft(bool rainbow) {
+static void renderFft(const bool rainbow, const bool normalizeBands) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
@@ -135,6 +135,7 @@ static void renderFft(bool rainbow) {
   // Vary the start hue by a small sine wave
   const int quadWaveMillisDiv = 64;
   const int quadWaveDiv = 8;
+
   const uint8_t hueStart = [rainbow]() mutable {
     if (rainbow) {
       ++rainbowOffset;
@@ -142,6 +143,24 @@ static void renderFft(bool rainbow) {
     }
     return static_cast<uint8_t>(quadwave8(millis() / quadWaveMillisDiv) / quadWaveDiv - 20);
   }();
+
+  // I'm having each color represent a different range. Red low, green mid, blue
+  // high. So try normalizing each band?
+  if (normalizeBands) {
+    for (int range = 0; range < 3; ++range) {
+      const int start = startNote + STRIP_COUNT * range;
+      const int end = start + STRIP_COUNT;
+      float maxValue = noteValues[start];
+      for (int note = start + 1; note < end; ++note) {
+        maxValue = max(maxValue, noteValues[note]);
+      }
+      const float inverse = 1.0f / maxValue;
+      for (int note = start; note < end; ++note) {
+        noteValues[note] *= inverse;
+      }
+    }
+  }
+
   uint16_t hue16 = hueStart * 256;
   for (int note = startNote; note < COUNT_OF(noteValues) - 1; /* Increment done in loop */) {
     {
@@ -235,6 +254,7 @@ void collectSamples() {
 void displaySpectrumAnalyzer(
   uint8_t brightness_p,
   const bool rainbow,
+  const bool normalizeBands,
   const uint8_t sensitivity_p,
   const uint8_t speed_p
 ) {
@@ -295,11 +315,15 @@ void displaySpectrumAnalyzer(
   for (int i = 0; i < COUNT_OF(output); ++i) {
     output[i] *= weightingConstants[i];
   }
-  normalizeTo0_1(output, SAMPLE_COUNT, sensitivity_p);
+  // Minimum divisor. The output from the FFT is squared, and we could sqrt it, but that's slow and
+  // unnecessary, so just square this number. Lower this number to increase sensitivity.
+  // 50% = 4000
+  const float minimumDivisor = square((130 - sensitivity_p) * 50);
+  normalizeTo0_1(output, SAMPLE_COUNT, minimumDivisor);
   const auto compute_us = micros() - part_us;
 
   part_us = micros();
-  renderFft(rainbow);
+  renderFft(rainbow, normalizeBands);
   const auto render_us = micros() - part_us;
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
@@ -493,7 +517,7 @@ static float maxOutputForNote(const int note) {
 /**
  * Normalize the samples to [0..1], or lower if all the samples are low
  */
-static void normalizeTo0_1(float samples[], const int length, const uint8_t sensitivity) {
+static void normalizeTo0_1(float samples[], const int length, const float minimumDivisor) {
   float minSample = samples[0];
   for (int i = 1; i < length; ++i) {
     minSample = min(minSample, samples[i]);
@@ -505,10 +529,6 @@ static void normalizeTo0_1(float samples[], const int length, const uint8_t sens
   for (int i = 1; i < length; ++i) {
     maxSample = max(maxSample, samples[i]);
   }
-  // Minimum divisor. The output from the FFT is squared, and we could sqrt it, but that's slow and
-  // unnecessary, so just square this number. Lower this number to increase sensitivity.
-  // 50% = 4000
-  const float minimumDivisor = square((130 - sensitivity) * 50);
 
   // Always have some divisor, in case all the values are low
   const float divisor = max(maxSample, minimumDivisor);
