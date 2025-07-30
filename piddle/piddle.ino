@@ -7,7 +7,6 @@
 #define SHOW_VOLTAGE 0
 
 #include <FastLED.h>
-#include <HX1838Decoder.h>
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
 #include "constants.hpp"
@@ -20,7 +19,6 @@ bool logDebug = false;
 
 TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
-//IRDecoder irDecoder(INFRARED_PIN);
 I2SClocklessLedDriver driver;
 
 void IRAM_ATTR buttonInterrupt() {
@@ -51,8 +49,6 @@ void setup() {
   // The boot button is connected to GPIO0
   pinMode(0, INPUT);
   attachInterrupt(0, buttonInterrupt, FALLING);
-
-  //irDecoder.begin();
 
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
@@ -107,19 +103,6 @@ void displayLedsFunction(void*) {
           Serial.read();
         }
       }
-
-/*
-      if (irDecoder.available()) {
-        Serial.print("Decoded NEC Data: 0x");
-        Serial.print(irDecoder.getDecodedData(), HEX);
-
-        if (irDecoder.isRepeatSignal()) {
-          Serial.println(" (REPEATED)");
-        } else {
-          Serial.println(" (NEW PRESS)");
-        }
-      }
-*/
     }
     // Keep the watchdog happy
     delay(1);
