@@ -4,14 +4,61 @@
 // arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32da
 // I don't know how to set frequency and stuff easily, might need to use the Arduino IDE
 
-#define SHOW_VOLTAGE 0
-
 #include <FastLED.h>
-#include <HX1838Decoder.h>
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
+
+//////////////////////////////////////////////
+//        RemoteXY include library          //
+//////////////////////////////////////////////
+
+// you can enable debug logging to Serial at 115200
+//#define REMOTEXY__DEBUGLOG
+
+// RemoteXY select connection mode and include library
+#define REMOTEXY_MODE__ESP32CORE_BLE
+
+#include <BLEDevice.h>
+
+// RemoteXY connection settings
+#define REMOTEXY_BLUETOOTH_NAME "Sonic Bloom"
+
+
+#include <RemoteXY.h>
+
+// RemoteXY GUI configuration
+#pragma pack(push, 1)
+uint8_t RemoteXY_CONF[] =   // 160 bytes
+  { 255,5,0,0,0,153,0,19,0,0,0,0,24,1,126,200,1,1,10,0,
+  129,32,15,62,12,64,17,66,114,105,103,104,116,110,101,115,115,0,129,33,
+  47,60,12,64,17,83,101,110,115,105,116,105,118,105,116,121,0,4,12,32,
+  104,10,128,2,26,4,12,62,104,10,128,2,26,129,43,76,35,12,64,17,
+  83,112,101,101,100,0,4,12,90,104,10,128,2,26,2,71,115,30,12,1,
+  2,26,31,31,79,78,0,79,70,70,0,129,21,116,48,12,64,17,82,97,
+  105,110,98,111,119,0,2,75,134,30,12,1,2,26,31,31,79,78,0,79,
+  70,70,0,129,16,135,57,12,64,17,78,111,114,109,97,108,105,122,101,0 };
+
+// this structure defines all the variables and events of your control interface
+struct {
+
+    // input variables
+  int8_t brightnessSlider; // from 0 to 100
+  int8_t sensitivitySlider; // from 0 to 100
+  int8_t speedSlider; // from 0 to 100
+  uint8_t rainbowSwitch; // =1 if switch ON and =0 if OFF
+  uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF
+
+    // other variable
+  uint8_t connect_flag;  // =1 if wire connected, else =0
+
+} RemoteXY;
+#pragma pack(pop)
+
+/////////////////////////////////////////////
+//           END RemoteXY include          //
+/////////////////////////////////////////////
 
 void blink(const int delay_ms = 500);
 
@@ -20,7 +67,6 @@ bool logDebug = false;
 
 TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
-IRDecoder irDecoder(INFRARED_PIN);
 I2SClocklessLedDriver driver;
 
 void IRAM_ATTR buttonInterrupt() {
@@ -52,7 +98,12 @@ void setup() {
   pinMode(0, INPUT);
   attachInterrupt(0, buttonInterrupt, FALLING);
 
-  //irDecoder.begin();
+  RemoteXY_Init();
+  RemoteXY.brightnessSlider = 25;
+  RemoteXY.rainbowSwitch = false;
+  RemoteXY.normalizeBandsSwitch = false;
+  RemoteXY.speedSlider = 85;
+  RemoteXY.sensitivitySlider = 50;
 
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
@@ -71,7 +122,7 @@ void setup() {
         leds[strip][0] = CHSV(hue + strip * (255 / STRIP_COUNT), 255, 64);
       }
       driver.showPixels();
-      delay(10);
+      RemoteXY_delay(10);
     }
   }
 
@@ -87,7 +138,7 @@ void setup() {
 }
 
 void loop() {
-  delay(10000);
+  RemoteXY_delay(10000);
 }
 
 void collectSamplesFunction(void*) {
@@ -99,23 +150,17 @@ void collectSamplesFunction(void*) {
 void displayLedsFunction(void*) {
   while (1) {
     for (int i = 0; i < 100; ++i) {
-      displaySpectrumAnalyzer();
+      displaySpectrumAnalyzer(
+        RemoteXY.brightnessSlider,
+        RemoteXY.rainbowSwitch,
+        RemoteXY.normalizeBandsSwitch,
+        RemoteXY.sensitivitySlider,
+        RemoteXY.speedSlider);
 
       if (Serial.available() > 0) {
         logDebug = true;
         while (Serial.available() > 0) {
           Serial.read();
-        }
-      }
-
-      if (irDecoder.available()) {
-        Serial.print("Decoded NEC Data: 0x");
-        Serial.print(irDecoder.getDecodedData(), HEX);
-
-        if (irDecoder.isRepeatSignal()) {
-          Serial.println(" (REPEATED)");
-        } else {
-          Serial.println(" (NEW PRESS)");
         }
       }
     }
@@ -126,7 +171,15 @@ void displayLedsFunction(void*) {
 
 void blink(const int delay_ms) {
   digitalWrite(LED_BUILTIN, HIGH);
-  delay(delay_ms);
+  RemoteXY_delay(delay_ms);
   digitalWrite(LED_BUILTIN, LOW);
-  delay(delay_ms);
+  RemoteXY_delay(delay_ms);
+}
+
+// This needs to be defined so that other files can call it, because the RemoteXY library does
+// something weird
+void RemoteXY_delayFunction(int ms) {
+  // Specifically, this is a macro that compiles to remotexy->delay(), but I don't know where
+  // "remotexy" is declared
+  RemoteXY_delay(ms);
 }
