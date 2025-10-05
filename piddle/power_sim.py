@@ -238,22 +238,42 @@ def run_simulation(options: Options) -> None:
         tick_positions = [m for m in range(total_minutes) if m % (hours_to_skip * 60) == 0]
         tick_labels = [f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00" for m in tick_positions]
 
+        already_labelled = set()
         for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
             if start.day_charging:
                 if start.limited:
                     color = "darkblue"
+                    label = "off, day charge, limited"
                 else:
                     color = "blue"
+                    label = "off, day charge"
             elif start.limited:
                 if start.on:
                     color = "red"
+                    label = "on, limited"
                 else:
                     color = "purple"
+                    label = "off, limited"
             elif start.on:
                 color = "orange"
+                label = "on"
             else:
                 color = "black"
-            plt.plot(range(start.minute, end.minute), battery_wh_by_minute[start.minute:end.minute], color=color)
+                label = "off"
+            if label in already_labelled:
+                plt.plot(
+                    range(start.minute, end.minute),
+                    battery_wh_by_minute[start.minute:end.minute],
+                    color=color,
+                )
+            else:
+                plt.plot(
+                    range(start.minute, end.minute),
+                    battery_wh_by_minute[start.minute:end.minute],
+                    color=color,
+                    label=label,
+                )
+                already_labelled.add(label)
 
         for message, position, offset in annotations:
             plt.annotate(
@@ -262,6 +282,8 @@ def run_simulation(options: Options) -> None:
                 textcoords="offset pixels",
                 xytext=offset,
             )
+
+        plt.legend()
 
         # Set custom ticks
         plt.xticks(tick_positions, tick_labels, rotation=60)
@@ -328,7 +350,7 @@ def make_parser() -> ArgumentParser:
         "-b",
         type=float,
         help="The max battery capacity in Wh. 100 Ah @ 12.8 V = 1280 Wh.",
-        default=12.8 * 100,
+        default=12.8 * 100 * 2,
     )
     parser.add_argument(
         "--solar-w",
@@ -340,8 +362,12 @@ def make_parser() -> ArgumentParser:
     )
     parser.add_argument(
         "--max-charge-w",
-        help="Max charge in W. If more power comes from the solar panels, it will be dropped.",
+        help="""Max charge in W. If more power comes from the solar panels, it will be dropped.
+        MPPT 100/20 max is 145W, but in real world I saw ~138. MPPT 100/20 max is 290W.""",
         type=float,
+        # For the MPPT 75/10, the max rate is 145W, but I usually only saw
+        # ~138. For the MPPT 100/20, the max rate is 290W, so maybe 276 in
+        # real world settings.
         default=138,
     )
     parser.add_argument(

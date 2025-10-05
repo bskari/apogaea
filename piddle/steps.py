@@ -1,3 +1,4 @@
+"""Generates the frequency range buckets for notes."""
 import sys
 
 def main():
