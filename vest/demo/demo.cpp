@@ -37,7 +37,7 @@ void setLedDoubleGrayscale(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedPastel(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedFire(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedGreen(int x, int y, uint8_t v, SDL_Renderer *renderer);
-void setLedSharpGreen(int x, int y, uint8_t v, SDL_Renderer *renderer);
+void setLedWaves(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void hsvToRgb(uint8_t hue, uint8_t saturation, uint8_t value, uint8_t *red,
               uint8_t *green, uint8_t *blue);
 typedef void(setLed_t(int, int, uint8_t, SDL_Renderer *));
@@ -414,8 +414,8 @@ const char* plasma1green(int time, SDL_Renderer *const renderer) {
   return __func__;
 }
 
-const char* plasma1sharpGreen(int time, SDL_Renderer *const renderer) {
-  plasma1(time, setLedSharpGreen, renderer);
+const char* plasma1waves(int time, SDL_Renderer *const renderer) {
+  plasma1(time, setLedWaves, renderer);
   return __func__;
 }
 
@@ -860,7 +860,7 @@ int main() {
   int animationIndex = 0;
   const char *(*animations[])(int, SDL_Renderer *) = {
       plasma1green,
-      plasma1sharpGreen,
+      plasma1waves,
       horizontalComets,
       basicSpiralSingleHue,
       diamondColorsHue,
@@ -905,7 +905,7 @@ int main() {
 
   initializeFire();
   // Returns zero on success else non-zero
-  if (SDL_Init(SDL_INIT_EVERYTHING) != 0) {
+  if (!SDL_Init(SDL_INIT_EVERYTHING)) {
     printf("error initializing SDL: %s\n", SDL_GetError());
   }
   SDL_Window *window = SDL_CreateWindow(
@@ -1116,16 +1116,16 @@ void setLedFire(int x, int y, uint8_t v, SDL_Renderer *renderer) {
 void setLedGreen(int x, int y, uint8_t v, SDL_Renderer *renderer) {
   // 0-0, 1-1, 2-2, ... 7-7, 8-7, 9-6, 10-5 ... 15-0, 16-1, 17-2, ...
   const uint8_t part = (v & 0x3F);
-  const uint8_t green = ((part < 32) ? part : 63 - part) * 2;
+  const uint8_t green = ((part < 32) ? part : 63 - part) * 8;
   setLed(x, y, 0, green, 0, renderer);
 }
 
-void setLedSharpGreen(int x, int y, uint8_t v, SDL_Renderer *renderer) {
+void setLedWaves(int x, int y, uint8_t v, SDL_Renderer *renderer) {
   constexpr uint8_t partial = 0b1000000;
   constexpr uint8_t half = partial / 2;
   constexpr uint8_t ander = partial - 1;
   const uint8_t part = (v & ander);
-  const uint8_t green = part < half ? 0 : (part - half) * (256 / partial);
+  const uint8_t green = part < half ? 0 : sin8((part - half) * (256 / partial));
   setLed(x, y, 0, green, 0, renderer);
 }
 
