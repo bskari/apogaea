@@ -1,10 +1,14 @@
 #include <SDL2/SDL.h>
 #include <SDL2/SDL2_gfxPrimitives.h>
 #include <SDL2/SDL_timer.h>
+#include <algorithm>
 #include <cassert>
 #include <cstdint>
 #include <limits>
 #include <time.h>
+
+using std::max;
+using std::min;
 
 #define PROGMEM
 
@@ -32,6 +36,8 @@ void setLedSingleHue(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedDoubleGrayscale(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedPastel(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedFire(int x, int y, uint8_t v, SDL_Renderer *renderer);
+void setLedGreen(int x, int y, uint8_t v, SDL_Renderer *renderer);
+void setLedSharpGreen(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void hsvToRgb(uint8_t hue, uint8_t saturation, uint8_t value, uint8_t *red,
               uint8_t *green, uint8_t *blue);
 typedef void(setLed_t(int, int, uint8_t, SDL_Renderer *));
@@ -400,6 +406,16 @@ const char *plasma1pastel(int time, SDL_Renderer *const renderer) {
 
 const char *plasma1fire(int time, SDL_Renderer *const renderer) {
   plasma1(time, setLedFire, renderer);
+  return __func__;
+}
+
+const char* plasma1green(int time, SDL_Renderer *const renderer) {
+  plasma1(time, setLedGreen, renderer);
+  return __func__;
+}
+
+const char* plasma1sharpGreen(int time, SDL_Renderer *const renderer) {
+  plasma1(time, setLedSharpGreen, renderer);
   return __func__;
 }
 
@@ -843,6 +859,8 @@ int main() {
   int time = 0;
   int animationIndex = 0;
   const char *(*animations[])(int, SDL_Renderer *) = {
+      plasma1green,
+      plasma1sharpGreen,
       horizontalComets,
       basicSpiralSingleHue,
       diamondColorsHue,
@@ -1093,6 +1111,22 @@ void setLedFire(int x, int y, uint8_t v, SDL_Renderer *renderer) {
   const uint8_t red = v < 128 ? v * 2 : 255;
   const uint8_t green = v >= 128 ? (v - 128) * 2 : 0;
   setLed(x, y, red, green, 0, renderer);
+}
+
+void setLedGreen(int x, int y, uint8_t v, SDL_Renderer *renderer) {
+  // 0-0, 1-1, 2-2, ... 7-7, 8-7, 9-6, 10-5 ... 15-0, 16-1, 17-2, ...
+  const uint8_t part = (v & 0x3F);
+  const uint8_t green = ((part < 32) ? part : 63 - part) * 2;
+  setLed(x, y, 0, green, 0, renderer);
+}
+
+void setLedSharpGreen(int x, int y, uint8_t v, SDL_Renderer *renderer) {
+  constexpr uint8_t partial = 0b1000000;
+  constexpr uint8_t half = partial / 2;
+  constexpr uint8_t ander = partial - 1;
+  const uint8_t part = (v & ander);
+  const uint8_t green = part < half ? 0 : (part - half) * (256 / partial);
+  setLed(x, y, 0, green, 0, renderer);
 }
 
 void setLed(const int index, uint32_t color, SDL_Renderer *const renderer) {
