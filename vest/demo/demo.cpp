@@ -38,6 +38,8 @@ void setLedPastel(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedFire(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedGreen(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void setLedWaves(int x, int y, uint8_t v, SDL_Renderer *renderer);
+void setLedWavesHue(int x, int y, uint8_t v, SDL_Renderer *renderer);
+void setLedWavesXHue(int x, int y, uint8_t v, SDL_Renderer *renderer);
 void hsvToRgb(uint8_t hue, uint8_t saturation, uint8_t value, uint8_t *red,
               uint8_t *green, uint8_t *blue);
 typedef void(setLed_t(int, int, uint8_t, SDL_Renderer *));
@@ -416,6 +418,18 @@ const char* plasma1green(int time, SDL_Renderer *const renderer) {
 
 const char* plasma1waves(int time, SDL_Renderer *const renderer) {
   plasma1(time, setLedWaves, renderer);
+  return __func__;
+}
+
+const char* plasma1wavesHue(int time, SDL_Renderer *const renderer) {
+  plasma1(time, setLedWavesHue, renderer);
+  ++singleHue;
+  return __func__;
+}
+
+const char* plasma1wavesXHue(int time, SDL_Renderer *const renderer) {
+  plasma1(time, setLedWavesXHue, renderer);
+  ++singleHue;
   return __func__;
 }
 
@@ -859,8 +873,9 @@ int main() {
   int time = 0;
   int animationIndex = 0;
   const char *(*animations[])(int, SDL_Renderer *) = {
-      plasma1green,
       plasma1waves,
+      plasma1wavesHue,
+      plasma1wavesXHue,
       horizontalComets,
       basicSpiralSingleHue,
       diamondColorsHue,
@@ -879,6 +894,7 @@ int main() {
       plasmaBidoulle,
       plasmaBidoulleFast,
       plasmaBidoulleFastChangingColors,
+      plasma1green,
       p1onlyHue,
       p2onlyHue,
       p3onlyHue,
@@ -1127,6 +1143,29 @@ void setLedWaves(int x, int y, uint8_t v, SDL_Renderer *renderer) {
   const uint8_t part = (v & ander);
   const uint8_t green = part < half ? 0 : sin8((part - half) * (256 / partial));
   setLed(x, y, 0, green, 0, renderer);
+}
+
+void setLedWavesHue(int x, int y, uint8_t v, SDL_Renderer *renderer) {
+  constexpr uint8_t partial = 0b1000000;
+  constexpr uint8_t half = partial / 2;
+  constexpr uint8_t ander = partial - 1;
+  const uint8_t part = (v & ander);
+  const uint8_t brightness = part < half ? 0 : sin8((part - half) * (256 / partial));
+  uint8_t red, green, blue;
+  hsvToRgb(singleHue, 255, brightness, &red, &green, &blue);
+  setLed(x, y, red, green, blue, renderer);
+}
+
+void setLedWavesXHue(int x, int y, uint8_t v, SDL_Renderer *renderer) {
+  constexpr uint8_t partial = 0b1000000;
+  constexpr uint8_t half = partial / 2;
+  constexpr uint8_t ander = partial - 1;
+  const uint8_t part = (v & ander);
+  const uint8_t brightness = part < half ? 0 : sin8((part - half) * (256 / partial));
+  const uint8_t hue = singleHue * 3 + x * 3;
+  uint8_t red, green, blue;
+  hsvToRgb(hue, 255, brightness, &red, &green, &blue);
+  setLed(x, y, red, green, blue, renderer);
 }
 
 void setLed(const int index, uint32_t color, SDL_Renderer *const renderer) {
