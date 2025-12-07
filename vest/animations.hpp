@@ -115,6 +115,23 @@ class HorizontalSnake : public Animation {
     bool xIncreasing;
 };
 
+class HorizontalComets : public Animation {
+  public:
+    HorizontalComets();
+    ~HorizontalComets() = default;
+    int animate() override;
+    void reset() override;
+  private:
+    const int delayStart = 6;
+    const int length = 8;
+
+    uint8_t hue;
+    uint8_t delay;
+    int16_t cometPositions[LED_ROW_COUNT];
+    bool left[LED_ROW_COUNT];
+    uint8_t hues[LED_ROW_COUNT];
+};
+
 class Fire : public Animation {
   public:
     Fire();

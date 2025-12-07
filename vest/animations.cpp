@@ -169,6 +169,85 @@ int HorizontalSnake::animate() {
   return 20;
 }
 
+HorizontalComets::HorizontalComets() :
+  hue(),
+  delay(),
+  cometPositions(),
+  left(),
+  hues()
+{
+  reset();
+}
+
+int HorizontalComets::animate() {
+  const int delayStart = 6;
+  const int length = 8;
+
+  FastLED.clear();
+
+  if (delay == 0) {
+    bool set = false;
+    int index = rand() % COUNT_OF(cometPositions);
+    // Just give up after 10 rolls
+    for (int i = 0; i < 10; ++i) {
+      if (cometPositions[index] < -length ||
+          cometPositions[index] >= LED_COLUMN_COUNT + length) {
+        set = true;
+        break;
+      }
+      index = rand() % COUNT_OF(cometPositions);
+    }
+
+    if (set) {
+      if (rand() % 2 == 0) {
+        cometPositions[index] = LED_COLUMN_COUNT - 1;
+        left[index] = true;
+      } else {
+        cometPositions[index] = 0;
+        left[index] = false;
+      }
+      hues[index] = hue;
+      hue += 45;
+    }
+
+    delay = delayStart;
+  }
+
+  for (int index = 0; index < COUNT_OF(cometPositions); ++index) {
+    const auto start = cometPositions[index];
+    uint8_t brightness = 255;
+    if (left[index]) {
+      for (int j = 0; j < length; ++j) {
+        setLed(start + j, index, CHSV(hues[index], 255, brightness));
+        brightness -= 30;
+      }
+      --cometPositions[index];
+    } else {
+      for (int j = 0; j < length; ++j) {
+        setLed(start - j, index, CHSV(hues[index], 255, brightness));
+        brightness -= 30;
+      }
+      ++cometPositions[index];
+    }
+  }
+
+  return 20;
+}
+
+void HorizontalComets::reset() {
+  static_assert(COUNT_OF(cometPositions) == COUNT_OF(left));
+  static_assert(COUNT_OF(left) == COUNT_OF(hues));
+  
+  hue = 0;
+  delay = delayStart;
+  const int init = LED_COLUMN_COUNT + length + 1;
+  for (int i = 0; i < COUNT_OF(cometPositions); ++i) {
+    cometPositions[i] = init;
+    left[i] = false;
+    hues[i] = 0;
+  }
+}
+
 Snake::Snake(int length_) : length(length_), offset(0), hue(0) {}
 
 int Snake::animate() {
@@ -576,8 +655,8 @@ SnakeGame::SnakeGame()
 void SnakeGame::reset() {
   length = 2;
   for (int i = length; i < WIDTH * HEIGHT; ++i) {
-    body[WIDTH * HEIGHT][0] = 0;
-    body[WIDTH * HEIGHT][1] = 0;
+    body[i][0] = 0;
+    body[i][1] = 0;
   }
   body[0][0] = WIDTH / 2;
   body[0][1] = HEIGHT / 2;

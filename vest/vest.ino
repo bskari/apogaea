@@ -134,11 +134,23 @@ static PlasmaBidoulleFast bidoulleChanging(changingGenerator);
 static Plasma3 plasma3(hueGenerator);
 static BasicSpiral spiral(hueGenerator);
 static MoviePlayer moviePlayer;
+static HorizontalComets horizontalComets;
 
 static SpectrumAnalyzer1 spectrumAnalyzer1(soundFunction);
 
 //static constexpr Animation* animations[] = { &plasma3, &horizontalSnake, &snake, &spiral, &shine, &blobs };
-static constexpr Animation* animations[] = { &plasma3, &snake, &bidoulleChanging, &shine, &bidoullePastel, &horizontalSnake, &spiral, &blobs, &bidoulleNeon };
+static constexpr Animation* animations[] = {
+  &plasma3,
+  &snake,
+  &bidoulleChanging,
+  &shine,
+  &bidoullePastel,
+  &horizontalSnake,
+  &spiral,
+  &blobs,
+  &bidoulleNeon,
+  &horizontalComets,
+};
 //static constexpr Animation* const* animations[] = { &snake };
 
 void loop() {
