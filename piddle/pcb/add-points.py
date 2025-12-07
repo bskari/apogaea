@@ -1,37 +1,52 @@
+import argparse
 import math
-import sys
+import re
 
-count = 15
-length = 70 if len(sys.argv) < 2 else float(sys.argv[1])
-print(length)
+COUNT = 15
 
-points = []
+def main() -> None:
+    """Main."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--holes", action="store_true", help="Set the position of the mounting holes")
+    parser.add_argument("-l", "--length", type=float, required=True, help="The length from the center")
+    parser.add_argument("-x", "--center_x", type=float, required=True, help="The x coordinate of the center")
+    parser.add_argument("-y", "--center_y", type=float, required=True, help="The y coordinate of the center")
+    args = parser.parse_args()
 
-for i in range(count):
-    partial_angle = math.radians(360 / count)
-    angle = partial_angle * i
-    x = math.sin(angle) * length
-    y = math.cos(angle) * length
-    points.append(f"(xy {x+106} {y+114})")
-    print(points[-1])
+    if args.holes:
+        # -l 90 -x 146.1133 -y 109.5963 seemed perfect
+        print(r"Processing holes - replacing {X\d} and {Y\d} with hole coordinates")
+        regex = re.compile(r"{X(\d+)} {Y(\d+)}")
 
-with open("piddle.kicad_pcb", "r") as file:
-    lines = file.readlines()
+        with open("piddle.kicad_pcb.backup", "r") as file:
+            lines = file.readlines()
 
-with open("piddle.kicad_pcb", "w") as file:
-    iterator = iter(lines)
-    while True:
-        try:
-            line = next(iterator)
-            if "(gr_poly" in line or "(polygon" in line:
+        count = 0
+        with open("piddle.kicad_pcb", "w") as file:
+            for line in lines:
+                if (match := regex.search(line)):
+                    number_x, number_y = [int(i) for i in match.groups()]
+                    if number_x != number_y:
+                        raise ValueError(f"number_x != number_x in line: {line}")
+
+                    angle_spread = 7
+                    if number_x % 2 == 0:
+                        angle = math.radians(360 / COUNT) * number_x + math.radians(360 / COUNT) / 2 - math.radians(angle_spread)
+                    else:
+                        angle = math.radians(360 / COUNT) * number_x + math.radians(360 / COUNT) / 2 + math.radians(angle_spread)
+
+                    x = math.sin(angle) * args.length + args.center_x
+                    y = math.cos(angle) * args.length + args.center_y
+                    line = line.replace(match.group(), f"{x} {y}")
+                    count += 1
                 file.write(line)
-                file.write(next(iterator)) # (pts
-                for p in points:
-                    file.write(p + "\n")
-                while line.strip() != ")":
-                    line = next(iterator)
-                file.write(line)
-            else:
-                file.write(line)
-        except StopIteration:
-            break
+        
+        if count != 30:
+            raise ValueError(f"Only processed {count} lines, expected 30")
+                
+    else:
+        print("Need to specify something to do")
+
+
+if __name__ == "__main__":
+    main()
