@@ -10,11 +10,16 @@ Save the file as piddle.kicad_pcb.backup, then run this. It will then create a
 """
 
 import argparse
+import itertools
 import math
+import re
 import typing
 
 
 COUNT = 15
+RESISTOR_HEADER = '(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (layer "F.Cu")'
+PIN_HEADER = '(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" (layer "F.Cu")'
+LED_HEADER = '(footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")'
 
 
 def clamp_d(angle_d):
@@ -26,6 +31,66 @@ def clamp_d(angle_d):
     return angle_d
 
 
+def sort_lines(lines: typing.List[str]) -> typing.List[str]:
+    """Put the component lines in order."""
+    # The LEDs, resistors, and through holes are all out of order? So just reorder them.
+    iterator = iter(lines)
+
+    def get_block(iterator2, first_line: str) -> typing.List[str]:
+        block_lines = [first_line]
+        parenthesis_count = first_line.count("(") - first_line.count(")")
+        while parenthesis_count > 0:
+            line = next(iterator2)
+            block_lines.append(line)
+            parenthesis_count += line.count("(") - line.count(")")
+
+        return block_lines
+
+    new_lines = []
+    resistors = []
+    leds = []
+    pin_headers = []
+
+    resistor_index = None
+    try:
+        while True:
+            line = next(iterator)
+            if line.strip() == RESISTOR_HEADER:
+                if len(resistors) == 0:
+                    resistor_index = len(new_lines)
+                resistors.append(get_block(iterator, line))
+            elif line.strip() == PIN_HEADER:
+                pin_headers.append(get_block(iterator, line))
+            elif line.strip() == LED_HEADER:
+                leds.append(get_block(iterator, line))
+            else:
+                new_lines.append(line)
+
+    except StopIteration:
+        pass
+
+    if resistor_index is None:
+        raise ValueError("No resistors found?")
+
+    regex = re.compile(r'"R(\d+)"')
+    resistors.sort(key=lambda array: int(regex.search(array[11]).groups()[0]))
+    regex = re.compile(r'"J(\d+)"')
+    pin_headers.sort(key=lambda array: int(regex.search(array[11]).groups()[0]))
+    regex = re.compile(r'"D(\d+)"')
+    leds.sort(key=lambda array: int(regex.search(array[11]).groups()[0]))
+
+    assert COUNT == len(resistors) == len(leds) == len(pin_headers)
+    #breakpoint()
+    return (
+        new_lines[:resistor_index]
+        # I think we can put all of these right after one another
+        + list(itertools.chain.from_iterable(resistors))
+        + list(itertools.chain.from_iterable(leds))
+        + list(itertools.chain.from_iterable(pin_headers))
+        + new_lines[resistor_index:]
+    )
+
+
 def arrange_components(lines: typing.List[str], length: float, center_x: float, center_y: float)-> typing.Tuple[typing.List[str], bool]:
     """Arrange the components."""
     PART_R = math.radians(360 / COUNT)
@@ -33,6 +98,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
     ground_plane_count = 0
     edge_cut_count = 0
     resistor_count = 0
+    pin_header_count = 0
 
     new_lines = []
 
@@ -98,7 +164,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                     edge_cut_count += 1
 
             # Resistors
-            elif line.strip() == '(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (layer "F.Cu")':
+            elif line.strip() == RESISTOR_HEADER:
                 new_lines.append(line)
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
@@ -110,6 +176,34 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
                 resistor_count += 1
 
+            # Pin headers
+            elif line.strip() == PIN_HEADER:
+                new_lines.append(line)
+                skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
+                skip_lines(1, False, lambda l: l.strip().startswith("(at"))
+                angle_r = PART_R * pin_header_count + PART_R / 2
+                # The position of the headers is one of the side pins, not the center, so we need
+                # to bump it a bit more to keep it centered
+                projection_angle_r = angle_r - PART_R / 10
+                resistor_length = length - 20
+                x = math.sin(projection_angle_r) * resistor_length + center_x
+                y = math.cos(projection_angle_r) * resistor_length + center_y
+                angle_d = clamp_d(math.degrees(angle_r) + 90)
+                new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
+                pin_header_count += 1
+
+            # LEDs
+            elif line.strip() == LED_HEADER:
+                new_lines.append(line)
+                skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
+                skip_lines(1, False, lambda l: l.strip().startswith("(at"))
+                angle_r = PART_R * pin_header_count + PART_R / 2
+                resistor_length = length - 25
+                x = math.sin(angle_r) * resistor_length + center_x
+                y = math.cos(angle_r) * resistor_length + center_y
+                angle_d = clamp_d(math.degrees(angle_r) + 90)
+                new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
+                pin_header_count += 1
             else:
                 new_lines.append(line)
 
@@ -155,11 +249,12 @@ def main() -> None:
     with open("piddle.kicad_pcb.backup", "r") as file:
         lines = file.readlines()
     
-    new_lines, success = arrange_components(lines, args.length, args.center_x, args.center_y)
+    lines = sort_lines(lines)
+    lines, success = arrange_components(lines, args.length, args.center_x, args.center_y)
     if success or args.force:
         print("Writing updated file")
         with open("piddle.kicad_pcb", "w") as file:
-            for line in new_lines:
+            for line in lines:
                 file.write(line)
 
 
