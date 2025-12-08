@@ -11,12 +11,14 @@ Save the file as piddle.kicad_pcb.backup, then run this. It will then create a
 
 import argparse
 import math
+import typing
+
 
 COUNT = 15
-PART_R = math.radians(360 / COUNT)
 
 
 def clamp_d(angle_d):
+    """Clamp an angle to -180..180"""
     while angle_d > 180:
         angle_d -= 360
     while angle_d < -180:
@@ -24,18 +26,9 @@ def clamp_d(angle_d):
     return angle_d
 
 
-def main() -> None:
-    """Main."""
-    parser = argparse.ArgumentParser()
-    parser.add_argument("-l", "--length", type=float, required=True, help="The length from the center")
-    parser.add_argument("-x", "--center_x", type=float, required=True, help="The x coordinate of the center")
-    parser.add_argument("-y", "--center_y", type=float, required=True, help="The y coordinate of the center")
-    parser.add_argument("-f", "--force", default=False, action="store_true", help="Write out even if there are errors")
-    args = parser.parse_args()
-
-    with open("piddle.kicad_pcb.backup", "r") as file:
-        lines = file.readlines()
-
+def arrange_components(lines: typing.List[str], length: float, center_x: float, center_y: float)-> typing.Tuple[typing.List[str], bool]:
+    """Arrange the components."""
+    PART_R = math.radians(360 / COUNT)
     hole_count = 0
     ground_plane_count = 0
     edge_cut_count = 0
@@ -47,8 +40,8 @@ def main() -> None:
     polygon_points = []
     for i in range(COUNT):
         angle_r = PART_R * i
-        x = math.sin(angle_r) * args.length + args.center_x
-        y = math.cos(angle_r) * args.length + args.center_y
+        x = math.sin(angle_r) * length + center_x
+        y = math.cos(angle_r) * length + center_y
         polygon_points.append((x, y))
 
     iterator = iter(lines)
@@ -78,8 +71,8 @@ def main() -> None:
                 else:
                     angle_r = PART_R * hole_count + math.radians(angle_r_spread)
 
-                x = math.sin(angle_r) * (args.length - 10) + args.center_x
-                y = math.cos(angle_r) * (args.length - 10) + args.center_y
+                x = math.sin(angle_r) * (length - 10) + center_x
+                y = math.cos(angle_r) * (length - 10) + center_y
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f})\n")
                 hole_count += 1
 
@@ -110,9 +103,9 @@ def main() -> None:
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r = PART_R * resistor_count
-                length = args.length - 25
-                x = math.sin(angle_r) * length + args.center_x
-                y = math.cos(angle_r) * length + args.center_y
+                resistor_length = length - 25
+                x = math.sin(angle_r) * resistor_length + center_x
+                y = math.cos(angle_r) * resistor_length + center_y
                 angle_d = clamp_d(math.degrees(angle_r) + 90)
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
                 resistor_count += 1
@@ -123,12 +116,13 @@ def main() -> None:
     except StopIteration:
         pass
 
+
+    success = True
+
     if hole_count != COUNT * 2:
         message = f"Only processed {hole_count} holes, expected {COUNT * 2}"
-        if args.force:
-            print(message)
-        else:
-            raise ValueError(message)
+        success = False
+        print(message)
 
     type_to_count = {
         "edge_cuts": edge_cut_count,
@@ -138,22 +132,35 @@ def main() -> None:
     for key, value in type_to_count.items():
         if value != COUNT:
             message = f"Only processed {value} {key}, expected {COUNT}"
-            if args.force:
-                print(message)
-            else:
-                raise ValueError(message)
+            success = False
+            print(message)
 
     if len(new_lines) != len(lines):
         message = f"Line count differs: old {len(lines)}, new {len(new_lines)}"
-        if args.force:
-            print(message)
-        else:
-            raise ValueError(message)
+        success = False
+        print(message)
+    
+    return new_lines, success
 
-    print("Writing updated file")
-    with open("piddle.kicad_pcb", "w") as file:
-        for line in new_lines:
-            file.write(line)
+
+def main() -> None:
+    """Main."""
+    parser = argparse.ArgumentParser()
+    parser.add_argument("-l", "--length", type=float, required=True, help="The length from the center")
+    parser.add_argument("-x", "--center_x", type=float, required=True, help="The x coordinate of the center")
+    parser.add_argument("-y", "--center_y", type=float, required=True, help="The y coordinate of the center")
+    parser.add_argument("-f", "--force", default=False, action="store_true", help="Write out even if there are errors")
+    args = parser.parse_args()
+
+    with open("piddle.kicad_pcb.backup", "r") as file:
+        lines = file.readlines()
+    
+    new_lines, success = arrange_components(lines, args.length, args.center_x, args.center_y)
+    if success or args.force:
+        print("Writing updated file")
+        with open("piddle.kicad_pcb", "w") as file:
+            for line in new_lines:
+                file.write(line)
 
 
 if __name__ == "__main__":
