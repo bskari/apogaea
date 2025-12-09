@@ -186,11 +186,11 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 angle_r = PART_R * (pin_header_count + 1) + PART_R / 2
                 # The position of the headers is one of the side pins, not the center, so we need
                 # to bump it a bit more to keep it centered
-                projection_angle_r = angle_r - PART_R / 10
+                projection_angle_r = angle_r + PART_R / 8
                 resistor_length = length - 20
                 x = math.sin(projection_angle_r) * resistor_length + center_x
                 y = math.cos(projection_angle_r) * resistor_length + center_y
-                angle_d = clamp_d(math.degrees(angle_r) + 90)
+                angle_d = clamp_d(math.degrees(angle_r) - 90)
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
                 pin_header_count += 1
 
