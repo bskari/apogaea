@@ -7,6 +7,7 @@ Create a board with COUNT (i.e. 15) elements, anywhere on the PCB, e.g.:
 - 30 mounting holes
 Save the file as piddle.kicad_pcb.backup, then run this. It will then create a
 15-sided board, and arrange the elements.
+python add-points.py -l 70 -x 100 -y 100 seems to work well.
 """
 
 import argparse
@@ -99,6 +100,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
     edge_cut_count = 0
     resistor_count = 0
     pin_header_count = 0
+    led_count = 0
 
     new_lines = []
 
@@ -133,9 +135,9 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r_spread = 4
                 if hole_count % 2 == 0:
-                    angle_r = PART_R * hole_count - math.radians(angle_r_spread)
+                    angle_r = PART_R * (hole_count + 1) - math.radians(angle_r_spread)
                 else:
-                    angle_r = PART_R * hole_count + math.radians(angle_r_spread)
+                    angle_r = PART_R * (hole_count + 1) + math.radians(angle_r_spread)
 
                 x = math.sin(angle_r) * (length - 10) + center_x
                 y = math.cos(angle_r) * (length - 10) + center_y
@@ -168,11 +170,11 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 new_lines.append(line)
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
-                angle_r = PART_R * resistor_count
+                angle_r = PART_R * (resistor_count + 1)
                 resistor_length = length - 25
                 x = math.sin(angle_r) * resistor_length + center_x
                 y = math.cos(angle_r) * resistor_length + center_y
-                angle_d = clamp_d(math.degrees(angle_r) + 90)
+                angle_d = clamp_d(math.degrees(angle_r) + 90 + 180)
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
                 resistor_count += 1
 
@@ -181,7 +183,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 new_lines.append(line)
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
-                angle_r = PART_R * pin_header_count + PART_R / 2
+                angle_r = PART_R * (pin_header_count + 1) + PART_R / 2
                 # The position of the headers is one of the side pins, not the center, so we need
                 # to bump it a bit more to keep it centered
                 projection_angle_r = angle_r - PART_R / 10
@@ -197,13 +199,13 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 new_lines.append(line)
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
-                angle_r = PART_R * pin_header_count + PART_R / 2
-                resistor_length = length - 25
-                x = math.sin(angle_r) * resistor_length + center_x
-                y = math.cos(angle_r) * resistor_length + center_y
+                angle_r = PART_R * (led_count + 1) + PART_R / 2
+                led_length = length - 25
+                x = math.sin(angle_r) * led_length + center_x
+                y = math.cos(angle_r) * led_length + center_y
                 angle_d = clamp_d(math.degrees(angle_r) + 90)
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
-                pin_header_count += 1
+                led_count += 1
             else:
                 new_lines.append(line)
 
@@ -222,6 +224,8 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
         "edge_cuts": edge_cut_count,
         "ground_planes": ground_plane_count,
         "resistors": resistor_count,
+        "pin_headers": pin_header_count,
+        "leds": led_count,
     }
     for key, value in type_to_count.items():
         if value != COUNT:
