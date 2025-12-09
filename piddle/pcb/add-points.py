@@ -80,8 +80,9 @@ def sort_lines(lines: typing.List[str]) -> typing.List[str]:
     regex = re.compile(r'"D(\d+)"')
     leds.sort(key=lambda array: int(regex.search(array[11]).groups()[0]))
 
-    assert COUNT == len(resistors) == len(leds) == len(pin_headers)
-    #breakpoint()
+    assert COUNT == len(resistors) == len(leds)
+    # I have more pin headers than just the LED connections
+    assert len(pin_headers) >= COUNT
     return (
         new_lines[:resistor_index]
         # I think we can put all of these right after one another
@@ -115,14 +116,17 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
     iterator = iter(lines)
     line = None
 
-    def skip_lines(count: int, append: bool, assertion = None) -> None:
+    def skip_lines(count: int, append: bool, assertion = None) -> typing.List[str]:
+        lines = []
         nonlocal line
         for _ in range(count):
             line = next(iterator)
+            lines.append(line)
             if assertion is not None:
                 assert assertion(line), line
             if append:
                 new_lines.append(line)
+        return lines
 
     try:
         while True:
@@ -180,9 +184,22 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
 
             # Pin headers
             elif line.strip() == PIN_HEADER:
+                # We have a problem. I have a bunch of pin headers, but I only want to do this line
+                # for the LED pin headers. I don't know of an easy way to do this, so what I will
+                # do is, read ahead until I hit the line:
+                # (fp_text reference "J7" (at 0 -2.33) (layer "F.SilkS")
+                # If the J# is <= COUNT, then I know it's an LED
                 new_lines.append(line)
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
-                skip_lines(1, False, lambda l: l.strip().startswith("(at"))
+                temp_lines = skip_lines(10, False)
+                match = re.search(r'reference "J(\d+)"', temp_lines[-1])
+                if not match:
+                    raise ValueError(f"No J# reference found for pin header: {temp_lines[-1]}")
+                number = int(match.groups()[0])
+                if number > COUNT:
+                    new_lines += temp_lines
+                    continue
+
                 angle_r = PART_R * (pin_header_count + 1) + PART_R / 2
                 # The position of the headers is one of the side pins, not the center, so we need
                 # to bump it a bit more to keep it centered
@@ -191,7 +208,8 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 x = math.sin(projection_angle_r) * resistor_length + center_x
                 y = math.cos(projection_angle_r) * resistor_length + center_y
                 angle_d = clamp_d(math.degrees(angle_r) - 90)
-                new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
+                temp_lines[0] = f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n"
+                new_lines += temp_lines
                 pin_header_count += 1
 
             # LEDs
@@ -200,7 +218,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r = PART_R * (led_count + 1) + PART_R / 2
-                led_length = length - 25
+                led_length = length - 27
                 x = math.sin(angle_r) * led_length + center_x
                 y = math.cos(angle_r) * led_length + center_y
                 angle_d = clamp_d(math.degrees(angle_r) + 90)

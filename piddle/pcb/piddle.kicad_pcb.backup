@@ -526,7 +526,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 19e7ad85-5ab2-4874-b9e2-34ed9e5f5b2e)
-    (at 108.9402 142.0603 102)
+    (at 109.356 144.0166 102)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -701,7 +701,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 226eb2d1-626a-408c-bef7-0596c0b148f0)
-    (at 91.0598 142.0603 78)
+    (at 90.644 144.0166 78)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -860,7 +860,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 358443ee-1882-4f32-b521-c86aa2931405)
-    (at 62.7609 121.5 30)
+    (at 61.0289 122.5 30)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -953,7 +953,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 383246b0-1f69-4566-a0bd-54e780056c0d)
-    (at 57.2356 104.4947 6)
+    (at 55.2465 104.7038 6)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -1424,7 +1424,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 49c9f185-33eb-4590-bd89-4b0d7a22510d)
-    (at 117.4897 60.7175 -114)
+    (at 118.3031 58.8905 -114)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -1581,7 +1581,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 50bb47f1-19e9-4b20-a7f8-39fcb31cf135)
-    (at 137.2391 121.5 150)
+    (at 138.9711 122.5 150)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -1649,7 +1649,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 5394fb00-27cc-4223-aa07-87dae93cf2e5)
-    (at 140.8954 86.7123 -162)
+    (at 142.7975 86.0942 -162)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -1858,7 +1858,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 5fe8ae46-4274-4d56-90b8-d87b202dab6c)
-    (at 74.7252 134.7877 54)
+    (at 73.5497 136.4058 54)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -2261,7 +2261,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 73715c74-d7c7-4d87-98b6-91a3ecd43984)
-    (at 125.2748 134.7877 126)
+    (at 126.4503 136.4058 126)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -2461,7 +2461,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 7a6c02a0-bcee-4373-bf55-d1122602309b)
-    (at 142.7644 104.4947 174)
+    (at 144.7535 104.7038 174)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -2800,7 +2800,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 96201b14-eb74-416c-ae65-3b58e4bc6628)
-    (at 131.9552 71.2274 -138)
+    (at 133.4415 69.8891 -138)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -2868,7 +2868,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp 96bb0784-695d-4a96-b398-c7066139f596)
-    (at 68.0448 71.2274 -42)
+    (at 66.5585 69.8891 -42)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -3341,7 +3341,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp b1496ba7-130f-471e-9bb3-0a8e514c4529)
-    (at 100 57 -90)
+    (at 100 55 -90)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -3876,7 +3876,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp c0f357da-b53b-4afe-a709-06711d13e960)
-    (at 59.1046 86.7123 -17)
+    (at 57.2025 86.0942 -17)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -3969,7 +3969,7 @@
 
   (footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")
     (tstamp c6b057f7-1774-4dd2-9f12-ba7625442d35)
-    (at 82.5103 60.7175 -66)
+    (at 81.6969 58.8905 -66)
     (descr "5.0mm x 5.0mm Addressable RGB LED NeoPixel, https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf")
     (tags "LED RGB NeoPixel PLCC-4 5050")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -4462,7 +4462,7 @@
 
   (footprint "Connector_PinHeader_2.54mm:PinHeader_1x02_P2.54mm_Vertical" (layer "F.Cu")
     (tstamp dba64912-9ba3-4ebb-a210-b05c9772c579)
-    (at 126.11328 86.596343 -90)
+    (at 123.57328 86.596343 90)
     (descr "Through hole straight pin header, 1x02, 2.54mm pitch, single row")
     (tags "Through hole pin header THT 1x02 2.54mm single row")
     (property "Sheetfile" "piddle.kicad_sch")
@@ -4513,9 +4513,9 @@
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp 1f9a1408-0063-4990-bd63-22bf11da90d3))
     (fp_line (start 1.27 3.81) (end -1.27 3.81)
       (stroke (width 0.1) (type solid)) (layer "F.Fab") (tstamp bdac6109-3d05-4296-8294-572ec88689a6))
-    (pad "1" thru_hole rect (at 0 0 270) (size 1.7 1.7) (drill 1) (layers "*.Cu" "*.Mask")
+    (pad "1" thru_hole rect (at 0 0 90) (size 1.7 1.7) (drill 1) (layers "*.Cu" "*.Mask")
       (net 5 "/GPIO34") (pinfunction "Pin_1") (pintype "passive") (tstamp eb3a2f6d-79ff-4cd8-80b5-26d96f5a3e59))
-    (pad "2" thru_hole oval (at 0 2.54 270) (size 1.7 1.7) (drill 1) (layers "*.Cu" "*.Mask")
+    (pad "2" thru_hole oval (at 0 2.54 90) (size 1.7 1.7) (drill 1) (layers "*.Cu" "*.Mask")
       (net 4 "/GPIO39") (pinfunction "Pin_2") (pintype "passive") (tstamp c719edd8-85f9-4aef-89d7-56f20209a37b))
     (model "${KICAD6_3DMODEL_DIR}/Connector_PinHeader_2.54mm.3dshapes/PinHeader_1x02_P2.54mm_Vertical.wrl"
       (offset (xyz 0 0 0))
@@ -5039,7 +5039,7 @@
   (gr_text "WS" (at 100.11328 76.596343) (layer "F.SilkS") (tstamp 92961140-34d0-45bc-98b6-b0a58de5efd6)
     (effects (font (size 1 1) (thickness 0.15)))
   )
-  (gr_text "39" (at 123.61328 89.596343 90) (layer "F.SilkS") (tstamp 9528757a-abec-422c-bff2-8f3bf076a956)
+  (gr_text "39" (at 126.61328 83.596343 90) (layer "F.SilkS") (tstamp 9528757a-abec-422c-bff2-8f3bf076a956)
     (effects (font (size 1 1) (thickness 0.15)))
   )
   (gr_text "SD" (at 105.61328 67.096343) (layer "F.SilkS") (tstamp 9744740e-7c9c-44fd-8902-c7c7ee2a0df0)
