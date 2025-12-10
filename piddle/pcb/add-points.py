@@ -175,7 +175,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r = PART_R * (resistor_count + 1)
-                resistor_length = length - 25
+                resistor_length = length - 30
                 x = math.sin(angle_r) * resistor_length + center_x
                 y = math.cos(angle_r) * resistor_length + center_y
                 angle_d = clamp_d(math.degrees(angle_r) + 90 + 180)
