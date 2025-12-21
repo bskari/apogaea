@@ -227,7 +227,7 @@ static void delayAndHandleRemoteXy(const int delay_ms) {
           nextState_ms = now_ms + fade_ms;
           // Go to next animation
           ++RemoteXY.animation;
-          if (RemoteXY.animation > COUNT_OF(animations)) {
+          if (RemoteXY.animation >= COUNT_OF(animations)) {
             RemoteXY.animation = 0;
           }
           break;
