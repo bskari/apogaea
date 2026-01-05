@@ -578,7 +578,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 162)
 			(layer "F.Fab")
 			(hide yes)
@@ -590,7 +590,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 162)
 			(layer "F.Fab")
 			(hide yes)
@@ -602,7 +602,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/18be9c0d-0fce-42a8-b192-c85a3996e790")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -840,7 +842,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 318)
 			(layer "F.Fab")
 			(hide yes)
@@ -852,7 +854,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 318)
 			(layer "F.Fab")
 			(hide yes)
@@ -864,7 +866,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/1fe74a8a-6de3-48f7-8267-41c6efa4c130")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -1099,7 +1103,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 331)
 			(layer "F.Fab")
 			(hide yes)
@@ -1111,7 +1115,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 331)
 			(layer "F.Fab")
 			(hide yes)
@@ -1123,7 +1127,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/985094a2-a722-45f5-a35d-7c329d982d82")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -1361,7 +1367,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 270)
 			(layer "F.Fab")
 			(hide yes)
@@ -1373,7 +1379,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 270)
 			(layer "F.Fab")
 			(hide yes)
@@ -1385,7 +1391,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/3d1bb318-d7a2-4891-9cca-d006a2ef4221")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -1620,7 +1628,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 102)
 			(layer "F.Fab")
 			(hide yes)
@@ -1632,7 +1640,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 102)
 			(layer "F.Fab")
 			(hide yes)
@@ -1644,7 +1652,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/b5b8261c-a6cc-41dd-b9e2-8ae61e946987")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -2049,7 +2059,7 @@
 			(at 0 0.5 0)
 			(layer "F.SilkS")
 			(hide yes)
-			(uuid "0bfad69c-88d6-4fac-8936-8d6d690ad157")
+			(uuid "9e2b4830-4834-4349-a12a-82d0107ce3e0")
 			(effects
 				(font
 					(size 1 1)
@@ -2060,7 +2070,7 @@
 		(property "Value" "INMP441"
 			(at 5.7 0 0)
 			(layer "F.Fab")
-			(uuid "4c7a5e93-b694-4d0a-bb39-db50a243bf8b")
+			(uuid "832e0a21-452e-4757-b3e2-7c89da214d79")
 			(effects
 				(font
 					(size 1 1)
@@ -2072,7 +2082,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "51d01e65-ac60-44fe-b849-b3ec49db0161")
+			(uuid "cd4bc3c8-4ead-413d-86e1-419e4383ff26")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2084,7 +2094,7 @@
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "f4e62a80-fbc7-459a-957d-1a77d9ec7211")
+			(uuid "b430e335-24a6-44a2-8f81-75127feeb4a1")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -2093,6 +2103,7 @@
 			)
 		)
 		(path "/a13df8f5-68fd-4038-b2ac-7f57bd1709b1")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_circle
@@ -2305,7 +2316,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 78)
 			(layer "F.Fab")
 			(hide yes)
@@ -2317,7 +2328,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 78)
 			(layer "F.Fab")
 			(hide yes)
@@ -2329,7 +2340,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/caa38da1-fbfd-42e6-a7c8-24bf1f5fda8e")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -2658,7 +2671,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 283)
 			(layer "F.Fab")
 			(hide yes)
@@ -2670,7 +2683,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 283)
 			(layer "F.Fab")
 			(hide yes)
@@ -2682,7 +2695,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/16e72c5b-76a5-4f25-83c7-6ad5a8ecbb33")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -2920,7 +2935,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 30)
 			(layer "F.Fab")
 			(hide yes)
@@ -2932,7 +2947,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 30)
 			(layer "F.Fab")
 			(hide yes)
@@ -2944,7 +2959,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/5730717a-184a-4840-ac95-b3add652f35b")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -3273,7 +3290,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 6)
 			(layer "F.Fab")
 			(hide yes)
@@ -3285,7 +3302,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 6)
 			(layer "F.Fab")
 			(hide yes)
@@ -3297,7 +3314,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/691efb42-ac85-4b73-a15b-eb7a55556a27")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -3531,7 +3550,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -3543,7 +3562,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -3555,7 +3574,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/59867e60-0c48-4b3d-bc19-098339264375")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -3793,7 +3814,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 222)
 			(layer "F.Fab")
 			(hide yes)
@@ -3805,7 +3826,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 222)
 			(layer "F.Fab")
 			(hide yes)
@@ -3817,7 +3838,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/42f80f1c-852c-4011-9dfd-5ee7cf18895b")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -4150,7 +4173,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -4162,7 +4185,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -4174,7 +4197,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/3e712e3c-4cee-4947-ba9a-164a69618460")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -4497,7 +4522,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 306)
 			(layer "F.Fab")
 			(hide yes)
@@ -4509,7 +4534,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 306)
 			(layer "F.Fab")
 			(hide yes)
@@ -4521,7 +4546,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/5a903292-cb0f-4637-a0ca-9e9bbcf91a27")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -4836,7 +4863,7 @@
 		(property "Reference" "R9"
 			(at 4.812321 -3.147905 0)
 			(layer "F.SilkS")
-			(uuid "e16328a4-c481-44ba-a373-2aaaf4a35df7")
+			(uuid "62e3202c-dd72-498f-ba93-9a1a7eca6391")
 			(effects
 				(font
 					(size 1 1)
@@ -4847,7 +4874,7 @@
 		(property "Value" "400"
 			(at 5.08 2.37 0)
 			(layer "F.Fab")
-			(uuid "1073a535-f5a6-4b51-a266-9e7d40d828e4")
+			(uuid "c6694a67-d38d-4856-95a2-669491a1b9ab")
 			(effects
 				(font
 					(size 1 1)
@@ -4855,11 +4882,11 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 126)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "d5b54e88-37a6-4496-b8d0-f7b196ad20ab")
+			(uuid "c418ec09-88b8-4c87-b2c9-afb38c8694b8")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4867,11 +4894,11 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 126)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "007c6f6d-cdd0-4b2b-a892-192a889d65cb")
+			(uuid "622e72fb-a6e3-4ce1-8f6b-1b501b76ce22")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -4879,7 +4906,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/a0e4bcc0-938a-435e-82a7-fa58ca82f65c")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -5114,7 +5143,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -5126,7 +5155,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -5138,7 +5167,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/978e0bcb-77a0-4c2b-a9fc-f9166d904ea1")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -5461,7 +5492,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 150)
 			(layer "F.Fab")
 			(hide yes)
@@ -5473,7 +5504,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 150)
 			(layer "F.Fab")
 			(hide yes)
@@ -5485,7 +5516,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/508a9737-31a2-4c8f-b264-afbdafd117f9")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -5815,7 +5848,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -5827,7 +5860,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -5839,7 +5872,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/be5679c3-1228-4a6d-b067-12675028b311")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -6173,7 +6208,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 246)
 			(layer "F.Fab")
 			(hide yes)
@@ -6185,7 +6220,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 246)
 			(layer "F.Fab")
 			(hide yes)
@@ -6197,7 +6232,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/d52ab44c-3d11-4bfb-b806-f2239b3f62d0")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -6526,7 +6563,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 54)
 			(layer "F.Fab")
 			(hide yes)
@@ -6538,7 +6575,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 54)
 			(layer "F.Fab")
 			(hide yes)
@@ -6550,7 +6587,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/462822b8-afba-4258-ad76-f1db2231d57b")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -6879,7 +6918,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 198)
 			(layer "F.Fab")
 			(hide yes)
@@ -6891,7 +6930,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 198)
 			(layer "F.Fab")
 			(hide yes)
@@ -6903,7 +6942,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/e8f914f5-7065-4fe5-981a-93d6c3a30ce1")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -7235,7 +7276,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -7247,7 +7288,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -7259,7 +7300,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/0dbbcac4-6c8e-4720-b607-0e635a5acc60")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -7486,7 +7529,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 102)
 			(layer "F.Fab")
 			(hide yes)
@@ -7498,7 +7541,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 102)
 			(layer "F.Fab")
 			(hide yes)
@@ -7510,7 +7553,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/cf44e9b2-b74c-41f5-82cf-64b5947e9696")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -7746,7 +7791,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -7758,7 +7803,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -7770,7 +7815,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/dc164c25-bc40-46a7-a674-bf6dfd5e97e7")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -8093,7 +8140,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 126)
 			(layer "F.Fab")
 			(hide yes)
@@ -8105,7 +8152,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 126)
 			(layer "F.Fab")
 			(hide yes)
@@ -8117,7 +8164,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/0ad265e4-9600-48b4-8801-501e0949ab64")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -8350,7 +8399,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 54)
 			(layer "F.Fab")
 			(hide yes)
@@ -8362,7 +8411,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 54)
 			(layer "F.Fab")
 			(hide yes)
@@ -8374,7 +8423,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/6061195e-e9ed-4a4d-af13-c1c0add00eb2")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -8609,7 +8660,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -8621,7 +8672,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -8633,7 +8684,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/2d1dd20e-6824-4f3e-a0f3-d8f5cf7d4cd1")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -8871,7 +8924,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 174)
 			(layer "F.Fab")
 			(hide yes)
@@ -8883,7 +8936,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 174)
 			(layer "F.Fab")
 			(hide yes)
@@ -8895,7 +8948,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/600e0caf-c26f-4342-833c-c1368e8fb4f0")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -9128,7 +9183,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 342)
 			(layer "F.Fab")
 			(hide yes)
@@ -9140,7 +9195,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 342)
 			(layer "F.Fab")
 			(hide yes)
@@ -9152,7 +9207,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/6832d8a4-cac0-4b1b-88ee-729ead663c9e")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -9368,7 +9425,7 @@
 		(property "Reference" "J21"
 			(at 1 -2.55 132)
 			(layer "F.SilkS")
-			(uuid "bac40f69-3c81-4dcd-b9bd-74c510537673")
+			(uuid "0747e199-12b0-4b3a-8aa2-62d22f9438a8")
 			(effects
 				(font
 					(size 1 1)
@@ -9379,7 +9436,7 @@
 		(property "Value" "JST power 2"
 			(at 1 7.45 132)
 			(layer "F.Fab")
-			(uuid "c6705195-6191-4ed1-b7bb-070ffa7cc3b2")
+			(uuid "e753aacf-74fc-4260-8a29-11c32a5bd116")
 			(effects
 				(font
 					(size 1 1)
@@ -9387,11 +9444,11 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 132)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "a823e4a9-e9e7-430b-939a-15ed3d720151")
+			(uuid "17751fcb-044d-4439-82c6-185eb9b66b59")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9399,11 +9456,11 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 132)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "9edcfe72-dadb-479e-ac0d-6ad4e98df671")
+			(uuid "232467c1-50ff-4fa1-8c2d-84be10f6fc28")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -9411,7 +9468,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/74493ba2-0e6d-4e8f-b4d4-921ad5ebd0e9")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -9889,7 +9948,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 150)
 			(layer "F.Fab")
 			(hide yes)
@@ -9901,7 +9960,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 150)
 			(layer "F.Fab")
 			(hide yes)
@@ -9913,7 +9972,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/2fe8dffd-40ce-499e-8786-479a9cb6c932")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -10225,7 +10286,7 @@
 		(property "Reference" "D5"
 			(at 0.278924 -4.282215 0)
 			(layer "F.SilkS")
-			(uuid "31e9650f-431d-4125-8c3c-426cece7a8ef")
+			(uuid "dc670b48-a7cf-4c0b-af41-0f5ce455459c")
 			(effects
 				(font
 					(size 1 1)
@@ -10236,7 +10297,7 @@
 		(property "Value" "WS2812B"
 			(at 0 3.999999 0)
 			(layer "F.Fab")
-			(uuid "aff9e502-a90e-4e42-b25c-cc842dbbb5d9")
+			(uuid "00228364-90ec-48ac-a0bd-f3cd26a24665")
 			(effects
 				(font
 					(size 1 1)
@@ -10244,11 +10305,11 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 222)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "6543a513-c5d6-4873-b1a2-e0693da0a969")
+			(uuid "c6bf28f8-78e9-4aed-81cf-ac434c26dcc1")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10256,11 +10317,11 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 222)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "540ffb10-09eb-4627-9531-3f98ab0294fc")
+			(uuid "afcfdf11-e54d-4fd8-98b5-7d97158b8fe7")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10268,7 +10329,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/c9929cb9-0349-41e0-b321-3b362cd42847")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -10482,7 +10545,7 @@
 		(property "Reference" "D9"
 			(at 0.539912 -3.986139 0)
 			(layer "F.SilkS")
-			(uuid "c4a041a1-cd0c-4985-9e4d-97aa866a4ad1")
+			(uuid "be3f39e6-61c1-4a1d-a14e-890f991be48d")
 			(effects
 				(font
 					(size 1 1)
@@ -10493,7 +10556,7 @@
 		(property "Value" "WS2812B"
 			(at 0 3.999999 0)
 			(layer "F.Fab")
-			(uuid "ee6388b1-231a-47c0-892b-70069acb504e")
+			(uuid "8ff71af8-4fc3-41c2-90c1-8b98ea5764e9")
 			(effects
 				(font
 					(size 1 1)
@@ -10501,11 +10564,11 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 318)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "6bc5238d-1d69-4153-862b-829f2bec7194")
+			(uuid "6ebb1eaa-9be5-42bf-ae59-01d77622a686")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10513,11 +10576,11 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 318)
 			(layer "F.Fab")
 			(hide yes)
-			(uuid "0c2cb818-bf5d-42fb-b508-ecab64243da0")
+			(uuid "a600256d-3dd2-415d-883d-fc80100b4874")
 			(effects
 				(font
 					(size 1.27 1.27)
@@ -10525,7 +10588,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/6190f462-d83a-4fa6-8290-f5307c6fb982")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -10854,7 +10919,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 66)
 			(layer "F.Fab")
 			(hide yes)
@@ -10866,7 +10931,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 66)
 			(layer "F.Fab")
 			(hide yes)
@@ -10878,7 +10943,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/04d9803e-8775-4f5c-90fe-e3d72f0e7eb0")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -11116,7 +11183,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 210)
 			(layer "F.Fab")
 			(hide yes)
@@ -11128,7 +11195,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 210)
 			(layer "F.Fab")
 			(hide yes)
@@ -11140,7 +11207,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/19f41571-294d-406b-92ef-0bf00c3ecaa7")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -11474,7 +11543,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 78)
 			(layer "F.Fab")
 			(hide yes)
@@ -11486,7 +11555,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 78)
 			(layer "F.Fab")
 			(hide yes)
@@ -11498,7 +11567,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/603a33ec-8c61-410d-889d-5e8f0996125d")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -11829,7 +11900,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 138)
 			(layer "F.Fab")
 			(hide yes)
@@ -11841,7 +11912,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 138)
 			(layer "F.Fab")
 			(hide yes)
@@ -11853,7 +11924,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/6a698e70-d88e-4c2e-964d-c4fe3cbb92dd")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -12091,7 +12164,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 187)
 			(layer "F.Fab")
 			(hide yes)
@@ -12103,7 +12176,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 187)
 			(layer "F.Fab")
 			(hide yes)
@@ -12115,7 +12188,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/596500be-ba5a-4f5d-ab95-04a89bc3dfde")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -12353,7 +12428,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 270)
 			(layer "F.Fab")
 			(hide yes)
@@ -12365,7 +12440,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 270)
 			(layer "F.Fab")
 			(hide yes)
@@ -12377,7 +12452,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/c431ca0a-e727-4976-ac31-338255d2c73d")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -12802,7 +12879,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 246)
 			(layer "F.Fab")
 			(hide yes)
@@ -12814,7 +12891,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 246)
 			(layer "F.Fab")
 			(hide yes)
@@ -12826,7 +12903,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/edd02d2a-6297-47c7-a530-d587106fc561")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -13061,7 +13140,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://docs.espressif.com/projects/esp-idf/zh_CN/latest/esp32/hw-reference/esp32/get-started-devkitc.html"
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -13073,7 +13152,7 @@
 				)
 			)
 		)
-		(property "Description" "Development Kit"
+		(property "Description" ""
 			(at 0 0 0)
 			(layer "F.Fab")
 			(hide yes)
@@ -13086,6 +13165,7 @@
 			)
 		)
 		(path "/25545cfd-2be4-4960-9ea4-ce7c2b0ccb2c")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -14201,7 +14281,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 30)
 			(layer "F.Fab")
 			(hide yes)
@@ -14213,7 +14293,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 30)
 			(layer "F.Fab")
 			(hide yes)
@@ -14225,7 +14305,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/3681e87c-623e-4e08-8544-55ee8f755943")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -14460,7 +14542,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 343)
 			(layer "F.Fab")
 			(hide yes)
@@ -14472,7 +14554,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 343)
 			(layer "F.Fab")
 			(hide yes)
@@ -14484,7 +14566,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/8db75399-febe-4033-9e36-55456e728002")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -14717,7 +14801,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 252)
 			(layer "F.Fab")
 			(hide yes)
@@ -14729,7 +14813,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 252)
 			(layer "F.Fab")
 			(hide yes)
@@ -14741,7 +14825,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/10cb1883-1946-43ac-8bb7-e5ccfbf5eb01")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -15315,7 +15401,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 294)
 			(layer "F.Fab")
 			(hide yes)
@@ -15327,7 +15413,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 294)
 			(layer "F.Fab")
 			(hide yes)
@@ -15339,7 +15425,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/9c2dae82-d6d7-476c-ab21-93bb9a983202")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -15572,7 +15660,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 259)
 			(layer "F.Fab")
 			(hide yes)
@@ -15584,7 +15672,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 259)
 			(layer "F.Fab")
 			(hide yes)
@@ -15596,7 +15684,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/ab471bbe-523a-4099-85ce-e24855eefdc2")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -15834,7 +15924,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://assets.nexperia.com/documents/data-sheet/1N4148_1N4448.pdf"
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -15846,7 +15936,7 @@
 				)
 			)
 		)
-		(property "Description" "100V 0.15A standard switching diode, DO-35"
+		(property "Description" ""
 			(at 0 0 90)
 			(layer "F.Fab")
 			(hide yes)
@@ -15882,7 +15972,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "D*DO?35*")
 		(path "/025cdfdd-9c33-403f-b942-014a947c87f5")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -16201,7 +16293,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 12)
 			(layer "F.Fab")
 			(hide yes)
@@ -16213,7 +16305,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 12)
 			(layer "F.Fab")
 			(hide yes)
@@ -16225,7 +16317,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/7c56a0b3-e6f8-440d-adbb-01006cb53056")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -16703,7 +16797,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 294)
 			(layer "F.Fab")
 			(hide yes)
@@ -16715,7 +16809,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 294)
 			(layer "F.Fab")
 			(hide yes)
@@ -16727,7 +16821,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/654f50bd-e765-4a4c-bca0-6e8c2a819735")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -16962,7 +17058,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 6)
 			(layer "F.Fab")
 			(hide yes)
@@ -16974,7 +17070,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 6)
 			(layer "F.Fab")
 			(hide yes)
@@ -16986,7 +17082,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/2696688e-c47c-496a-bc21-1d2ca338af92")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -17317,7 +17415,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 270)
 			(layer "F.Fab")
 			(hide yes)
@@ -17329,7 +17427,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x02, script generated"
+		(property "Description" ""
 			(at 0 0 270)
 			(layer "F.Fab")
 			(hide yes)
@@ -17341,7 +17439,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/f9902110-d825-41c3-88cd-ad1c0613c6b1")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -17664,7 +17764,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 42)
 			(layer "F.Fab")
 			(hide yes)
@@ -17676,7 +17776,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 42)
 			(layer "F.Fab")
 			(hide yes)
@@ -17688,7 +17788,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/34c54ba7-a72f-46a6-8130-fd42f5ca1610")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -18022,7 +18124,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 18)
 			(layer "F.Fab")
 			(hide yes)
@@ -18034,7 +18136,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 18)
 			(layer "F.Fab")
 			(hide yes)
@@ -18046,7 +18148,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/dc4061ff-2f5d-4501-80e7-3c997777909e")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -18284,7 +18388,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 235)
 			(layer "F.Fab")
 			(hide yes)
@@ -18296,7 +18400,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 235)
 			(layer "F.Fab")
 			(hide yes)
@@ -18308,7 +18412,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/4fe356b9-4e2b-40ea-b315-05f76829816d")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -18546,7 +18652,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "https://cdn-shop.adafruit.com/datasheets/WS2812B.pdf"
 			(at 0 0 198)
 			(layer "F.Fab")
 			(hide yes)
@@ -18558,7 +18664,7 @@
 				)
 			)
 		)
-		(property "Description" "RGB LED with integrated controller"
+		(property "Description" ""
 			(at 0 0 198)
 			(layer "F.Fab")
 			(hide yes)
@@ -18570,7 +18676,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "LED*WS2812*PLCC*5.0x5.0mm*P3.2mm*")
 		(path "/692f557c-4f86-49df-bcd0-3eb55398edbf")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr smd)
 		(fp_line
@@ -18803,7 +18911,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 114)
 			(layer "F.Fab")
 			(hide yes)
@@ -18815,7 +18923,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 114)
 			(layer "F.Fab")
 			(hide yes)
@@ -18827,7 +18935,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/e8fd5138-fd3f-40d1-92cd-333cbe6015c9")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -19065,7 +19175,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 354)
 			(layer "F.Fab")
 			(hide yes)
@@ -19077,7 +19187,7 @@
 				)
 			)
 		)
-		(property "Description" "Generic connector, single row, 01x03, script generated"
+		(property "Description" ""
 			(at 0 0 354)
 			(layer "F.Fab")
 			(hide yes)
@@ -19089,7 +19199,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "Connector*:*_1x??_*")
 		(path "/0f420101-48ce-4c14-9b9c-e8225b92b9a3")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -19327,7 +19439,7 @@
 				)
 			)
 		)
-		(property "Datasheet" ""
+		(property "Datasheet" "~"
 			(at 0 0 174)
 			(layer "F.Fab")
 			(hide yes)
@@ -19339,7 +19451,7 @@
 				)
 			)
 		)
-		(property "Description" "Resistor"
+		(property "Description" ""
 			(at 0 0 174)
 			(layer "F.Fab")
 			(hide yes)
@@ -19351,7 +19463,9 @@
 				)
 			)
 		)
+		(property ki_fp_filters "R_*")
 		(path "/afc0462e-d1a3-4584-91d7-49dee2c97685")
+		(sheetname "/")
 		(sheetfile "piddle.kicad_sch")
 		(attr through_hole)
 		(fp_line
@@ -19654,19 +19768,320 @@
 		)
 		(embedded_fonts no)
 	)
-	(gr_poly
-		(pts
-			(xy 100 170) (xy 128.4716 163.9482) (xy 152.0201 146.8391) (xy 166.574 121.6312) (xy 169.6165 92.683)
-			(xy 160.6218 65) (xy 141.145 43.3688) (xy 114.5538 31.5297) (xy 85.4462 31.5297) (xy 58.855 43.3688)
-			(xy 39.3782 65) (xy 30.3835 92.683) (xy 33.426 121.6312) (xy 47.9799 146.8391) (xy 71.5284 163.9482)
-		)
+	(gr_arc
+		(start 51.419075 149.337823)
+		(mid 48.31193 146.540138)
+		(end 45.854356 143.157578)
 		(stroke
 			(width 0.05)
-			(type solid)
+			(type default)
 		)
-		(fill no)
 		(layer "Edge.Cuts")
-		(uuid "627226ce-334f-4804-aa6f-1b74c4fb84da")
+		(uuid "17db9869-3422-4a0d-bf2e-6c3905fc561b")
+	)
+	(gr_arc
+		(start 137.261371 41.639706)
+		(mid 140.882364 43.730288)
+		(end 143.989578 46.528028)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "213608da-4ce3-4a28-87f4-79eab5ce320c")
+	)
+	(gr_line
+		(start 137.261371 41.639706)
+		(end 118.437385 33.258774)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "256bd458-b4df-4b7d-8515-d3f0af685fa7")
+	)
+	(gr_line
+		(start 110.30269 31.5297)
+		(end 89.69731 31.5297)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "2a945e4e-3b67-4860-a287-ca9fdb721a8e")
+	)
+	(gr_arc
+		(start 167.018359 117.403293)
+		(mid 166.149044 121.493123)
+		(end 164.448391 125.312835)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "2dc4c86e-f23c-485f-b386-e58273394be2")
+	)
+	(gr_line
+		(start 56.010422 46.528028)
+		(end 42.222769 61.840783)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "3c4e4cb2-8a83-4628-9c50-84846f706279")
+	)
+	(gr_line
+		(start 81.562615 33.258774)
+		(end 62.738629 41.639706)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "5f5bc8f6-a51b-4c14-bb61-7b549d9c71a7")
+	)
+	(gr_arc
+		(start 154.145644 143.157578)
+		(mid 151.688064 146.540134)
+		(end 148.580925 149.337823)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "6eb1c710-7d90-49db-a4c3-c36410771c4d")
+	)
+	(gr_arc
+		(start 81.562615 33.258774)
+		(mid 85.539096 31.966744)
+		(end 89.69731 31.5297)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "70378640-3d1f-4447-a636-5193b4c3de39")
+	)
+	(gr_arc
+		(start 157.777231 61.840783)
+		(mid 160.234847 65.223407)
+		(end 161.935469 69.04308)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "747c276a-4e77-403f-9b0b-4ccd2c123c9b")
+	)
+	(gr_line
+		(start 38.064531 69.04308)
+		(end 31.697151 88.639975)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "817c9b0a-194c-4b55-9cfe-57ed48ed8eda")
+	)
+	(gr_line
+		(start 104.158217 169.116147)
+		(end 124.313324 164.832065)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "86b8735c-b0ed-47e7-ae07-cee7cbbd1939")
+	)
+	(gr_line
+		(start 167.018359 117.403293)
+		(end 169.172152 96.910799)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "8cdb40cd-01b3-4be2-b36a-14f0b254490e")
+	)
+	(gr_line
+		(start 75.686675 164.832065)
+		(end 95.841783 169.116147)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "91cc7d43-cb9b-407b-87fe-647b9ada2a97")
+	)
+	(gr_arc
+		(start 56.010422 46.528028)
+		(mid 59.117633 43.730284)
+		(end 62.738629 41.639706)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "9460472f-9429-4307-8d3b-a97ad0b8fe4a")
+	)
+	(gr_line
+		(start 157.777231 61.840783)
+		(end 143.989578 46.528028)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "982781d7-6e33-4afa-a403-e187a7e1d06b")
+	)
+	(gr_arc
+		(start 104.158217 169.116147)
+		(mid 100 169.553191)
+		(end 95.841783 169.116147)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "9f4b3fd7-d383-443c-8980-851333f37bcb")
+	)
+	(gr_line
+		(start 35.551609 125.312835)
+		(end 45.854356 143.157578)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "a1a277c7-aeb4-4653-a765-38b409aea4ca")
+	)
+	(gr_line
+		(start 30.827848 96.910799)
+		(end 32.981641 117.403293)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "a29028d0-6515-44bb-9f53-d39e7b9c11bb")
+	)
+	(gr_line
+		(start 154.145644 143.157578)
+		(end 164.448391 125.312835)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "a71dba8e-9c61-4dfe-822c-869c107a4779")
+	)
+	(gr_arc
+		(start 30.827848 96.910799)
+		(mid 30.827858 92.729704)
+		(end 31.697151 88.639975)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "a811f69e-2668-4c05-a17b-6adac70847a5")
+	)
+	(gr_arc
+		(start 131.910864 161.449412)
+		(mid 128.289861 163.540009)
+		(end 124.313324 164.832065)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "b3e4c523-9cb1-4f87-97b7-09a9e5b42cfc")
+	)
+	(gr_line
+		(start 168.302849 88.639975)
+		(end 161.935469 69.04308)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "bc25eb60-07e9-4fb3-8d94-b8f1a069f792")
+	)
+	(gr_arc
+		(start 110.30269 31.5297)
+		(mid 114.460904 31.966742)
+		(end 118.437385 33.258774)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "c6033068-b737-4302-815c-7a4f67ac0443")
+	)
+	(gr_arc
+		(start 38.064531 69.04308)
+		(mid 39.765153 65.223407)
+		(end 42.222769 61.840783)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "cacdc4d9-2b50-4c7a-bdf1-b41decadb7ce")
+	)
+	(gr_line
+		(start 131.910864 161.449412)
+		(end 148.580925 149.337823)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "d2273259-8e7e-452d-aaa8-f1f78d979a31")
+	)
+	(gr_line
+		(start 51.419075 149.337823)
+		(end 68.089136 161.449412)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "d35a3489-2668-4df0-9005-1b93366b1ee3")
+	)
+	(gr_arc
+		(start 75.686675 164.832065)
+		(mid 71.710138 163.540009)
+		(end 68.089136 161.449412)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "e1bb5636-5bad-42a5-ba4d-16aabb2abe56")
+	)
+	(gr_arc
+		(start 35.551609 125.312835)
+		(mid 33.850957 121.493123)
+		(end 32.981641 117.403293)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "f31f0972-bafb-4c40-8566-3cc1a30a0ffb")
+	)
+	(gr_arc
+		(start 168.302849 88.639975)
+		(mid 169.172148 92.729704)
+		(end 169.172152 96.910799)
+		(stroke
+			(width 0.05)
+			(type default)
+		)
+		(layer "Edge.Cuts")
+		(uuid "f49a2f3c-0b1a-4c47-ba21-c317cb13bf56")
 	)
 	(gr_text "github.com/apogaea/piddle"
 		(at 148.11328 144.596343 240)
@@ -19705,6 +20120,17 @@
 				(bold yes)
 			)
 			(justify left bottom mirror)
+		)
+	)
+	(gr_text "1"
+		(at 136.10986 69.63954 0)
+		(layer "F.SilkS")
+		(uuid "0424d6af-eba1-4040-972a-268b8cc05668")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
 		)
 	)
 	(gr_text "LED v"
@@ -19936,6 +20362,28 @@
 		(effects
 			(font
 				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(gr_text "${REFERENCE}"
+		(at 73.502651 63.529494 0)
+		(layer "F.Fab")
+		(uuid "793a6a22-f0f4-4923-af5a-758ffa0c14a3")
+		(effects
+			(font
+				(size 1 1)
+				(thickness 0.15)
+			)
+		)
+	)
+	(gr_text "${REFERENCE}"
+		(at 131.9552 71.2274 0)
+		(layer "F.Fab")
+		(uuid "a66daf63-6c5e-4075-a83d-c16a1134639c")
+		(effects
+			(font
+				(size 0.8 0.8)
 				(thickness 0.15)
 			)
 		)
