@@ -19681,7 +19681,7 @@
 			(justify left bottom mirror)
 		)
 	)
-	(gr_text "Phonic Bloom 2.0"
+	(gr_text "Phonic Bloom 2.1"
 		(at 108.61328 35.596343 0)
 		(layer "B.Cu")
 		(uuid "c47d853d-67dd-4c59-b16c-eea5a870bee9")
@@ -19751,7 +19751,7 @@
 			)
 		)
 	)
-	(gr_text "Phonic Bloom 2.0\nBrandon Skari\ngithub.com/apogaea/piddle"
+	(gr_text "Phonic Bloom 2.1\nBrandon Skari\ngithub.com/apogaea/piddle"
 		(at 78.61328 80.596343 45)
 		(layer "F.SilkS")
 		(uuid "4ab91310-e75f-4e78-a4e2-0cc297529256")
