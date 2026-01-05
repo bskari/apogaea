@@ -18,9 +18,9 @@ import typing
 
 
 COUNT = 15
-RESISTOR_HEADER = '(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal" (layer "F.Cu")'
-PIN_HEADER = '(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical" (layer "F.Cu")'
-LED_HEADER = '(footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm" (layer "F.Cu")'
+RESISTOR_HEADER = '(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"'
+PIN_HEADER = '(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"'
+LED_HEADER = '(footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm"'
 
 
 def clamp_d(angle_d):
@@ -74,11 +74,12 @@ def sort_lines(lines: typing.List[str]) -> typing.List[str]:
         raise ValueError("No resistors found?")
 
     regex = re.compile(r'"R(\d+)"')
-    resistors.sort(key=lambda array: int(regex.search(array[11]).groups()[0]))
+    # Looking for lines like '(property "Reference" "R2"'
+    resistors.sort(key=lambda array: int(regex.search(array[6]).groups()[0]))
     regex = re.compile(r'"J(\d+)"')
-    pin_headers.sort(key=lambda array: int(regex.search(array[11]).groups()[0]))
+    pin_headers.sort(key=lambda array: int(regex.search(array[6]).groups()[0]))
     regex = re.compile(r'"D(\d+)"')
-    leds.sort(key=lambda array: int(regex.search(array[11]).groups()[0]))
+    leds.sort(key=lambda array: int(regex.search(array[6]).groups()[0]))
 
     assert COUNT == len(resistors) == len(leds)
     # I have more pin headers than just the LED connections
@@ -102,6 +103,8 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
     resistor_count = 0
     pin_header_count = 0
     led_count = 0
+
+    skipped_xy_line_count = 0
 
     new_lines = []
 
@@ -132,10 +135,10 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
         while True:
             line = next(iterator)
             # Mounting holes
-            if line.strip() == '(footprint "MountingHole:MountingHole_3.2mm_M3" (layer "F.Cu")':
+            if line.strip() == '(footprint "MountingHole:MountingHole_3.2mm_M3"':
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
-
+                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
+                skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r_spread = 4
                 if hole_count % 2 == 0:
@@ -149,30 +152,43 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 hole_count += 1
 
             # Ground plane
-            elif line.strip() == '(zone (net 1) (net_name "GND") (layers "F&B.Cu") (tstamp ada41c68-0de9-470a-8df8-3f4c66fa4ce9) (hatch edge 0.5)':
+            elif line.strip() == "(zone":
                 new_lines.append(line)
-                # Skip the lines until we get to the polygon points
-                skip_lines(5, True, lambda l: "(xy" not in l)
-                # Skip the points
-                skip_lines(COUNT, False, lambda l: "(xy" in l)
+                # There are two zones, and they have different counts to get to the xy points, so
+                # we can't just skip a line count
+                line = next(iterator)
+                while "(xy" not in line:
+                    new_lines.append(line)
+                    line = next(iterator)
+                while "(xy" in line:
+                    skipped_xy_line_count += 1
+                    line = next(iterator)
                 for point in polygon_points:
                     new_lines.append(f"        (xy {point[0]:0.4f} {point[1]:0.4f})\n")
                     ground_plane_count += 1
+                new_lines.append(line)
 
             # Edge cut
             elif line.strip() == "(gr_poly":
                 new_lines.append(line)
                 skip_lines(1, True, lambda l: "(pts" in l)
-                # Skip the points
-                skip_lines(COUNT, False, lambda l: "(xy" in l)
+                line = next(iterator)
+                # Skip the points. The points are a bunch of e.g. "(xy 100 170)", but there are
+                # several on each line
+                assert "(xy" in line, f"Expected '(xy' in line: '{line}'"
+                while "(xy" in line:
+                    skipped_xy_line_count += 1
+                    line = next(iterator)
                 for point in polygon_points:
                     new_lines.append(f"      (xy {point[0]:0.4f} {point[1]:0.4f})\n")
                     edge_cut_count += 1
+                new_lines.append(line)
 
             # Resistors
             elif line.strip() == RESISTOR_HEADER:
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
+                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
+                skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r = PART_R * (resistor_count + 1)
                 resistor_length = length - 30
@@ -187,12 +203,13 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 # We have a problem. I have a bunch of pin headers, but I only want to do this line
                 # for the LED pin headers. I don't know of an easy way to do this, so what I will
                 # do is, read ahead until I hit the line:
-                # (fp_text reference "J7" (at 0 -2.33) (layer "F.SilkS")
+                # (property "Reference" "J7"
                 # If the J# is <= COUNT, then I know it's an LED
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
-                temp_lines = skip_lines(10, False)
-                match = re.search(r'reference "J(\d+)"', temp_lines[-1])
+                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
+                skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
+                temp_lines = skip_lines(4, False)
+                match = re.search(r'property "Reference" "J(\d+)"', temp_lines[-1])
                 if not match:
                     raise ValueError(f"No J# reference found for pin header: {temp_lines[-1]}")
                 number = int(match.groups()[0])
@@ -215,7 +232,8 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
             # LEDs
             elif line.strip() == LED_HEADER:
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith("(tstamp"))
+                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
+                skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r = PART_R * (led_count + 1) + PART_R / 2
                 led_length = length - 27
@@ -224,6 +242,19 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 angle_d = clamp_d(math.degrees(angle_r) + 90)
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
                 led_count += 1
+
+                # We also need to find and rotate the pads
+                angle = 0
+                pad_count = 0
+                while pad_count < 4:
+                    line = next(iterator)
+                    if re.search(r'pad "(\d+)" smd rect', line):
+                        new_lines.append(line)
+                        pad_count += 1
+                        skip_lines(1, False, lambda l: l.strip().startswith("(at"))
+                        new_lines.append(line.replace(")", f" {int(clamp_d(angle_d + 90))})"))
+                    else:
+                        new_lines.append(line)
             else:
                 new_lines.append(line)
 
@@ -238,9 +269,14 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
         success = False
         print(message)
 
+    # I have a front and back ground plane, I guess? So expect COUNT * 2
+    if ground_plane_count != COUNT * 2:
+        message = f"Processed {ground_plane_count} ground planes, expected {COUNT}"
+        success = False
+        print(message)
+
     type_to_count = {
         "edge_cuts": edge_cut_count,
-        "ground_planes": ground_plane_count,
         "resistors": resistor_count,
         "pin_headers": pin_header_count,
         "leds": led_count,
@@ -251,10 +287,14 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
             success = False
             print(message)
 
-    if len(new_lines) != len(lines):
-        message = f"Line count differs: old {len(lines)}, new {len(new_lines)}"
+    # The original file has multiple "(xy ...)" statements on a single line, but we expand them to
+    # be one per line, so we need to adjust our count
+    expected_line_count = len(lines) - skipped_xy_line_count + COUNT * 2
+    if len(new_lines) != expected_line_count:
+        message = f"Line count differs: old {len(lines)}, new {len(new_lines)}, expected {expected_line_count}"
         success = False
         print(message)
+        print(f"Skipped {skipped_xy_line_count} xy lines")
     
     return new_lines, success
 
@@ -265,7 +305,7 @@ def main() -> None:
     parser.add_argument("-l", "--length", type=float, required=True, help="The length from the center")
     parser.add_argument("-x", "--center_x", type=float, required=True, help="The x coordinate of the center")
     parser.add_argument("-y", "--center_y", type=float, required=True, help="The y coordinate of the center")
-    parser.add_argument("-f", "--force", default=False, action="store_true", help="Write out even if there are errors")
+    parser.add_argument("-o", "--output", type=str, required=False, help="The output file name")
     args = parser.parse_args()
 
     with open("piddle.kicad_pcb.backup", "r") as file:
@@ -273,11 +313,18 @@ def main() -> None:
     
     lines = sort_lines(lines)
     lines, success = arrange_components(lines, args.length, args.center_x, args.center_y)
-    if success or args.force:
+
+    output_file_name = args.output
+    if success and not args.output:
+        output_file_name = "piddle.kicad_pcb"
+
+    if output_file_name is not None:
         print("Writing updated file")
-        with open("piddle.kicad_pcb", "w") as file:
+        with open(output_file_name, "w") as file:
             for line in lines:
                 file.write(line)
+    else:
+        print("Not writing updated file because of validation errors")
 
 
 if __name__ == "__main__":
