@@ -151,23 +151,6 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f})\n")
                 hole_count += 1
 
-            # Ground plane
-            elif line.strip() == "(zone":
-                new_lines.append(line)
-                # There are two zones, and they have different counts to get to the xy points, so
-                # we can't just skip a line count
-                line = next(iterator)
-                while "(xy" not in line:
-                    new_lines.append(line)
-                    line = next(iterator)
-                while "(xy" in line:
-                    skipped_xy_line_count += 1
-                    line = next(iterator)
-                for point in polygon_points:
-                    new_lines.append(f"        (xy {point[0]:0.4f} {point[1]:0.4f})\n")
-                    ground_plane_count += 1
-                new_lines.append(line)
-
             # Edge cut
             elif line.strip() == "(gr_poly":
                 new_lines.append(line)
