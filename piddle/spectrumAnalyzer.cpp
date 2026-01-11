@@ -22,10 +22,10 @@ static const int MAX_I2S_BUFFER_LENGTH = 512;
 
 static const int MINIMUM_THRESHOLD = 20;
 
-// Generated from python3 steps.py 2048 44100
+// Generated from python3 steps.py 2048 44100.0 -s
 static const int SAMPLE_COUNT = 2048;
 static constexpr uint16_t NOTE_TO_OUTPUT_INDEX[] = {
-  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 15, 16, 18, 20, 22, 24, 27, 30, 32, 36, 40, 45, 48, 54, 61, 64, 72, 81, 91, 97, 109, 122, 129, 145, 163, 183
+  1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19, 20, 21, 22, 24, 25, 27, 28, 30, 32, 34, 36, 38, 40, 43, 45, 48, 51, 54, 57, 61, 64, 68, 72, 77, 81, 86, 91, 97, 102, 109, 115, 122, 129, 137, 145, 154, 163, 173, 183
 };
 const int c4Index = 11;
 

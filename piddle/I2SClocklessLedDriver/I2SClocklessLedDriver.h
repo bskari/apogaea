@@ -38,8 +38,8 @@
 #include "helper.h"
 
 #ifndef NUMSTRIPS
-#warning "NUMSTRIPS not defined, defaulting to 10"
-#define NUMSTRIPS 10
+#warning "NUMSTRIPS not defined, defaulting to 15"
+#define NUMSTRIPS 15
 #endif
 
 #ifndef SNAKEPATTERN
