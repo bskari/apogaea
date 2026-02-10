@@ -48,9 +48,11 @@ Special pins:
 // This is the most pins I could get to work with FastLED
 // constexpr int LED_PINS[] = {4, 5, 12, 13, 14, 15, 16, 17, 18, 19, 23, 25, 26, 27, 32, 33};
 constexpr int LED_PINS[] = {
-  // Left side
-  13, 12, 14, 27, 26, 25, 33, 32,
-  // Right side
-  23, 22, 21, 19, 18, 17, 16
+  // Start at 6:15 (D14) then go anti-clockwise
+  14, 27, 26, 25, 33, 32, 21,
+  // 12:00 D7
+  19, 18, 5, 17, 16, 4, 15,
+  // 11:45 D15
+  12
 };
 const int STRIP_COUNT = COUNT_OF(LED_PINS);

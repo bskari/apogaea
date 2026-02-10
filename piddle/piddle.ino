@@ -10,6 +10,7 @@
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
+#ifdef USE_REMOTEXY
 //////////////////////////////////////////////
 //        RemoteXY include library          //
 //////////////////////////////////////////////
@@ -39,6 +40,7 @@ uint8_t RemoteXY_CONF[] =   // 160 bytes
   2,26,31,31,79,78,0,79,70,70,0,129,21,116,48,12,64,17,82,97,
   105,110,98,111,119,0,2,75,134,30,12,1,2,26,31,31,79,78,0,79,
   70,70,0,129,16,135,57,12,64,17,78,111,114,109,97,108,105,122,101,0 };
+#endif
 
 // this structure defines all the variables and events of your control interface
 struct {
@@ -98,12 +100,14 @@ void setup() {
   pinMode(0, INPUT);
   attachInterrupt(0, buttonInterrupt, FALLING);
 
+#ifdef USE_REMOTEXY
   RemoteXY_Init();
   RemoteXY.brightnessSlider = 25;
   RemoteXY.rainbowSwitch = false;
   RemoteXY.normalizeBandsSwitch = false;
   RemoteXY.speedSlider = 85;
   RemoteXY.sensitivitySlider = 50;
+#endif
 
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
@@ -115,14 +119,20 @@ void setup() {
     1); // Core where the task should run
 
   // Test all the logic level converter LEDs
+  uint8_t hue = 0;
   for (int i = 0; i < 5; ++i) {
-    for (uint8_t hue = 0; hue < 240; hue += 10) {
+    for (int strip = 0; strip < STRIP_COUNT; ++strip) {
       fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
-      for (int strip = 0; strip < STRIP_COUNT; ++strip) {
-        leds[strip][0] = CHSV(hue + strip * (255 / STRIP_COUNT), 255, 64);
+      const uint8_t brightnesses[] = {16, 32, 64, 128, 64, 32, 16};
+      uint8_t huePart = hue;
+      for (int i = 0; i < COUNT_OF(brightnesses); ++i) {
+        const int innerStrip = (strip + STRIP_COUNT + i) % STRIP_COUNT;
+        leds[innerStrip][0] = CHSV(huePart, 255, brightnesses[i]);
+        huePart += 10;
       }
       driver.showPixels();
-      RemoteXY_delay(10);
+      delay(50);
+      hue += 10;
     }
   }
 
@@ -136,6 +146,12 @@ void setup() {
     &displayLedsTask, // Task handle.
     0); // Core where the task should run
 }
+
+#ifndef USE_REMOTEXY
+void RemoteXY_delay(const int x) {
+  delay(x);
+}
+#endif
 
 void loop() {
   RemoteXY_delay(10000);
