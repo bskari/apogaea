@@ -120,7 +120,7 @@ void setup() {
 
   // Test all the logic level converter LEDs
   uint8_t hue = 0;
-  for (int i = 0; i < 2; ++i) {
+  for (int i = 0; i < 1; ++i) { // Increase this for longer effect
     for (int strip = 0; strip < STRIP_COUNT; ++strip) {
       fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
       const uint8_t brightnesses[] = {16, 32, 64, 128, 64, 32, 16};

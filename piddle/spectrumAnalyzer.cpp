@@ -180,7 +180,7 @@ static void renderFft(const bool rainbow, const bool normalizeBands) {
       hue16 += hue16Step;
 
       // Remove this so the LEDs on the board don't light up (i.e., this is for testing)
-      leds[strip][0] = CHSV(hue, 255, gammaCorrected / 3);
+      leds[strip][0] += CHSV(hue, 255, gammaCorrected / 3);
 
       // Do SLIDE_COUNT + 1 because the first LED is the logic level shifter on the PCB
       for (int i = 1; i < SLIDE_COUNT + 1; ++i) {
