@@ -73,7 +73,7 @@ I2SClocklessLedDriver driver;
 
 void IRAM_ATTR buttonInterrupt() {
   static uint8_t index = 0;
-  const uint8_t brightnesses[] = {16, 32, 64, 128, 255};
+  const uint8_t brightnesses[] = {8, 16, 32, 64, 32, 16, 8};
   const char* const percents[] = {"6", "13", "25", "50", "100"};
 
   index = (index + 1) % COUNT_OF(brightnesses);
@@ -102,12 +102,12 @@ void setup() {
 
 #ifdef USE_REMOTEXY
   RemoteXY_Init();
+#endif
   RemoteXY.brightnessSlider = 25;
   RemoteXY.rainbowSwitch = false;
   RemoteXY.normalizeBandsSwitch = false;
   RemoteXY.speedSlider = 85;
   RemoteXY.sensitivitySlider = 50;
-#endif
 
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
@@ -120,7 +120,7 @@ void setup() {
 
   // Test all the logic level converter LEDs
   uint8_t hue = 0;
-  for (int i = 0; i < 5; ++i) {
+  for (int i = 0; i < 2; ++i) {
     for (int strip = 0; strip < STRIP_COUNT; ++strip) {
       fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
       const uint8_t brightnesses[] = {16, 32, 64, 128, 64, 32, 16};
