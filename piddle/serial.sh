@@ -11,4 +11,6 @@ else
     exit 1
 fi
 
+echo '********** Ctrl+A, Ctrl+X to exit **********'
+sleep 0.5
 picocom $device --baud 115200 --echo --imap lfcrlf
