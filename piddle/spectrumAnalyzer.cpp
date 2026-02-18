@@ -337,6 +337,20 @@ void displaySpectrumAnalyzer(
   const auto render_us = micros() - part_us;
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
+
+  // The first LED in each strip is powered through a 1N4148 diode. Limit brightness so it stays
+  // under 50 mA. Once I disable the first LEDs (only needed for testing), this can be removed.
+  CRGB firstLeds[STRIP_COUNT];
+  for (int i = 0; i < STRIP_COUNT; ++i) {
+    firstLeds[i] = leds[i][0];
+  }
+  const int diodeBrightness = calculate_max_brightness_for_power_vmA(
+    firstLeds,
+    STRIP_COUNT,
+    255,
+    5,
+    50
+  );
   // My voltage converter can only output 10A, so limit to half of that
   const int max_ma = 5000;
   const int limitedBrightness = calculate_max_brightness_for_power_vmA(
@@ -346,7 +360,7 @@ void displaySpectrumAnalyzer(
     12,
     max_ma
   );
-  driver.setBrightness(limitedBrightness);
+  driver.setBrightness(min(diodeBrightness, limitedBrightness));
 
   part_us = micros();
   driver.showPixels(NO_WAIT);
