@@ -16,17 +16,22 @@ static void printHelp() {
     printf("  N         Toggle normalize bands\n");
     printf("  Up/Down   Brightness +/- 5\n");
     printf("  Left/Right  Speed +/- 5\n");
-    printf("  [/]       Sensitivity +/- 5\n");
+    printf("  ,/.       Sensitivity +/- 5\n");
+    printf("  [/]       Previous/Next audio file\n");
     printf("  Q/Escape  Quit\n");
     printf("\n");
 }
 
 int main(int argc, char* argv[]) {
     if (argc < 2) {
-        fprintf(stderr, "Usage: %s <audio_file>\n", argv[0]);
+        fprintf(stderr, "Usage: %s <audio_file> [audio_file2 ...]\n", argv[0]);
         return 1;
     }
-    const char* wavFile = argv[1];
+
+    // Build playlist from all positional arguments
+    int              fileCount   = argc - 1;
+    char**           files       = argv + 1;
+    int              fileIdx     = 0;
 
     if (SDL_Init(SDL_INIT_VIDEO | SDL_INIT_AUDIO) != 0) {
         fprintf(stderr, "SDL_Init failed: %s\n", SDL_GetError());
@@ -34,10 +39,11 @@ int main(int argc, char* argv[]) {
     }
 
     AudioState audio{};
-    if (!initAudio(wavFile, audio)) {
+    if (!initAudio(files[fileIdx], audio)) {
         SDL_Quit();
         return 1;
     }
+    printf("Playing [%d/%d]: %s\n", fileIdx + 1, fileCount, files[fileIdx]);
 
     DisplayState display{};
     if (!initDisplay(display)) {
@@ -50,8 +56,7 @@ int main(int argc, char* argv[]) {
 
     printHelp();
 
-    // Parameters (matching ESP32 defaults)
-    uint8_t brightness_p   = 25;
+    uint8_t brightness_p   = 100;
     uint8_t sensitivity_p  = 50;
     uint8_t speed_p        = 85;
     bool    rainbow        = false;
@@ -61,8 +66,26 @@ int main(int argc, char* argv[]) {
     static CRGB leds[STRIP_COUNT][LEDS_PER_STRIP]{};
     memset(leds, 0, sizeof(leds));
 
-    const int16_t* samples     = audioSamples(audio);
+    const int16_t* samples      = audioSamples(audio);
     uint32_t       totalSamples = audioTotalSamples(audio);
+
+    // Load a new file by index, replacing the current audio state.
+    // Returns false if loading fails (keeps old state on failure).
+    auto loadFile = [&](int idx) -> bool {
+        closeAudio(audio);
+        audio.len = 0;
+        audio.pos.store(0);
+        audio.dev = 0;
+        if (!initAudio(files[idx], audio)) {
+            fprintf(stderr, "Failed to load: %s\n", files[idx]);
+            return false;
+        }
+        fileIdx     = idx;
+        samples     = audioSamples(audio);
+        totalSamples = audioTotalSamples(audio);
+        printf("Playing [%d/%d]: %s\n", fileIdx + 1, fileCount, files[fileIdx]);
+        return true;
+    };
 
     bool quit = false;
     while (!quit) {
@@ -103,15 +126,23 @@ int main(int argc, char* argv[]) {
                             std::max(0, static_cast<int>(speed_p) - 5));
                         printf("Speed: %d\n", speed_p);
                         break;
-                    case SDLK_RIGHTBRACKET:
+                    case SDLK_PERIOD:
                         sensitivity_p = static_cast<uint8_t>(
                             std::min(100, static_cast<int>(sensitivity_p) + 5));
                         printf("Sensitivity: %d\n", sensitivity_p);
                         break;
-                    case SDLK_LEFTBRACKET:
+                    case SDLK_COMMA:
                         sensitivity_p = static_cast<uint8_t>(
                             std::max(0, static_cast<int>(sensitivity_p) - 5));
                         printf("Sensitivity: %d\n", sensitivity_p);
+                        break;
+                    case SDLK_RIGHTBRACKET:
+                        if (fileIdx + 1 < fileCount) loadFile(fileIdx + 1);
+                        else printf("Already at last file.\n");
+                        break;
+                    case SDLK_LEFTBRACKET:
+                        if (fileIdx > 0) loadFile(fileIdx - 1);
+                        else printf("Already at first file.\n");
                         break;
                     default: break;
                 }
@@ -127,10 +158,14 @@ int main(int argc, char* argv[]) {
             continue;
         }
 
-        // Stop when audio finishes
+        // Advance to next file when audio finishes, quit after the last one
         if (samplePos >= totalSamples) {
-            quit = true;
-            break;
+            if (fileIdx + 1 < fileCount) {
+                loadFile(fileIdx + 1);
+            } else {
+                quit = true;
+            }
+            continue;
         }
 
         // Read the most recent SAMPLE_COUNT samples (no sign fix needed for WAV)
