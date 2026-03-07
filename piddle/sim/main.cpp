@@ -39,15 +39,9 @@ int main(int argc, char* argv[]) {
     }
 
     AudioState audio{};
-    if (!initAudio(files[fileIdx], audio)) {
-        SDL_Quit();
-        return 1;
-    }
-    printf("Playing [%d/%d]: %s\n", fileIdx + 1, fileCount, files[fileIdx]);
 
     DisplayState display{};
     if (!initDisplay(display)) {
-        closeAudio(audio);
         SDL_Quit();
         return 1;
     }
@@ -66,26 +60,35 @@ int main(int argc, char* argv[]) {
     static CRGB leds[STRIP_COUNT][LEDS_PER_STRIP]{};
     memset(leds, 0, sizeof(leds));
 
-    const int16_t* samples      = audioSamples(audio);
-    uint32_t       totalSamples = audioTotalSamples(audio);
+    const int16_t* samples      = nullptr;
+    uint32_t       totalSamples = 0;
 
-    // Load a new file by index, replacing the current audio state.
-    // Returns false if loading fails (keeps old state on failure).
-    auto loadFile = [&](int idx) -> bool {
-        closeAudio(audio);
-        audio.len = 0;
-        audio.pos.store(0);
-        audio.dev = 0;
-        if (!initAudio(files[idx], audio)) {
-            fprintf(stderr, "Failed to load: %s\n", files[idx]);
-            return false;
+    // Load starting at startIdx, advancing by step (+1 or -1) on failure.
+    // Skips files that ffmpeg can't decode, returns false if none succeed.
+    auto loadFile = [&](int startIdx, int step) -> bool {
+        for (int idx = startIdx; idx >= 0 && idx < fileCount; idx += step) {
+            closeAudio(audio);
+            audio.len = 0;
+            audio.pos.store(0);
+            audio.dev = 0;
+            if (initAudio(files[idx], audio)) {
+                fileIdx      = idx;
+                samples      = audioSamples(audio);
+                totalSamples = audioTotalSamples(audio);
+                printf("Playing [%d/%d]: %s\n", fileIdx + 1, fileCount, files[fileIdx]);
+                return true;
+            }
+            fprintf(stderr, "Skipping (not audio?): %s\n", files[idx]);
         }
-        fileIdx     = idx;
-        samples     = audioSamples(audio);
-        totalSamples = audioTotalSamples(audio);
-        printf("Playing [%d/%d]: %s\n", fileIdx + 1, fileCount, files[fileIdx]);
-        return true;
+        return false;
     };
+
+    if (!loadFile(0, 1)) {
+        fprintf(stderr, "No playable audio files.\n");
+        closeDisplay(display);
+        SDL_Quit();
+        return 1;
+    }
 
     bool quit = false;
     while (!quit) {
@@ -137,11 +140,11 @@ int main(int argc, char* argv[]) {
                         printf("Sensitivity: %d\n", sensitivity_p);
                         break;
                     case SDLK_RIGHTBRACKET:
-                        if (fileIdx + 1 < fileCount) loadFile(fileIdx + 1);
+                        if (fileIdx + 1 < fileCount) { if (!loadFile(fileIdx + 1, 1)) printf("No more playable files.\n"); }
                         else printf("Already at last file.\n");
                         break;
                     case SDLK_LEFTBRACKET:
-                        if (fileIdx > 0) loadFile(fileIdx - 1);
+                        if (fileIdx > 0) { if (!loadFile(fileIdx - 1, -1)) printf("No more playable files.\n"); }
                         else printf("Already at first file.\n");
                         break;
                     default: break;
@@ -161,7 +164,7 @@ int main(int argc, char* argv[]) {
         // Advance to next file when audio finishes, quit after the last one
         if (samplePos >= totalSamples) {
             if (fileIdx + 1 < fileCount) {
-                loadFile(fileIdx + 1);
+                if (!loadFile(fileIdx + 1, 1)) quit = true;
             } else {
                 quit = true;
             }
