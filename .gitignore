@@ -12,3 +12,7 @@ piddle/pcb/*bck
 piddle/pcb/*lck
 piddle/pcb/gerber
 build
+CMakeCache.txt
+CMakeFiles/
+cmake_install.cmake
+CTestTestfile.cmake
