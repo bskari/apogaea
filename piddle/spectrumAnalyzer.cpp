@@ -50,6 +50,8 @@ static float windowingConstants[SAMPLE_COUNT];
 
 static i2s_chan_handle_t rxHandle;
 
+volatile bool bluetoothActive = false;
+
 extern CRGB leds[STRIP_COUNT][LEDS_PER_STRIP];
 extern I2SClocklessLedDriver driver;
 extern bool logDebug;
@@ -262,6 +264,16 @@ void collectSamples() {
   }
 }
 
+void writeBtSamples(const uint8_t* stereoData, uint32_t length) {
+  const int16_t* samples = reinterpret_cast<const int16_t*>(stereoData);
+  const uint32_t frameCount = length / 4; // 4 bytes per stereo frame (L int16 + R int16)
+  for (uint32_t i = 0; i < frameCount; ++i) {
+    const int32_t mono = (static_cast<int32_t>(samples[i * 2]) + samples[i * 2 + 1]) / 2;
+    rawSamples[rawSamplesOffset] = static_cast<int16_t>(mono);
+    rawSamplesOffset = (rawSamplesOffset + 1) % COUNT_OF(rawSamples);
+  }
+}
+
 void displaySpectrumAnalyzer(
   uint8_t brightness_p,
   const bool rainbow,
@@ -292,21 +304,26 @@ void displaySpectrumAnalyzer(
     sampleOffset += COUNT_OF(rawSamples);
   }
 
+  // Snapshot once - BT audio is proper signed int16, I2S mic needs sign correction
+  const bool btActive = bluetoothActive;
   if (sampleOffset + COUNT_OF(input) < COUNT_OF(rawSamples)) {
     for (int i = 0; i < COUNT_OF(input); ++i) {
-      input[i] = FIX_SAMPLE_SIGN(rawSamples[sampleOffset + i]);
+      const int16_t s = rawSamples[sampleOffset + i];
+      input[i] = btActive ? s : FIX_SAMPLE_SIGN(s);
     }
   } else {
     // Let's say length = 10, offset = 13
     // Then I need to copy 7 items (2*length-offset) starting at 13
     const int upper = COUNT_OF(rawSamples) - sampleOffset;
     for (int i = 0; i < upper; ++i) {
-      input[i] = FIX_SAMPLE_SIGN(rawSamples[sampleOffset + i]);
+      const int16_t s = rawSamples[sampleOffset + i];
+      input[i] = btActive ? s : FIX_SAMPLE_SIGN(s);
     }
     // Then copy the last 3 items
     const int lower = COUNT_OF(output) - upper;
     for (int i = 0; i < lower; ++i) {
-      input[i + upper] = FIX_SAMPLE_SIGN(rawSamples[i]);
+      const int16_t s = rawSamples[i];
+      input[i + upper] = btActive ? s : FIX_SAMPLE_SIGN(s);
     }
   }
 

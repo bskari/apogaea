@@ -7,6 +7,7 @@
 #include <FastLED.h>
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
+#include "bluetoothAudio.hpp"
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
@@ -117,6 +118,8 @@ void setup() {
     1, // Priority of the task
     &collectSamplesTask, // Task handle.
     1); // Core where the task should run
+
+  setupBluetoothAudio(collectSamplesTask, "Sonic Bloom");
 
   // Test all the logic level converter LEDs
   uint8_t hue = 0;

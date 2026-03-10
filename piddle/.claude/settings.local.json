@@ -1,0 +1,10 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(arduino-cli lib:*)",
+      "Bash(grep -rn \"bt_connected\\\\|bt_dis_connected\" ~/Arduino/libraries/ESP32-A2DP/src/*.h)",
+      "Bash(grep -rn \"bt_connected\\\\|bt_dis_connected\\\\|set_on_connect\" ~/Arduino/libraries/ESP32-A2DP/src/*.cpp | head -20)",
+      "Bash(./compile.sh 2>&1)"
+    ]
+  }
+}
