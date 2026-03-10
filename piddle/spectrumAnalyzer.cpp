@@ -68,8 +68,6 @@ static float windowingMultiplier(const int offset);
 static void powerOfTwo(float* const array, const int length);
 static constexpr float square(const float f);
 
-void RemoteXY_delayFunction(int ms);
-
 
 static void computeFft() {
   // Windowing
@@ -386,7 +384,7 @@ void displaySpectrumAnalyzer(
 
   // The animations are too fast, so add an artificial delay
   const int delay_ms = 100 - speed_p;
-  RemoteXY_delayFunction(delay_ms);
+  delay(delay_ms);
 
   ++loopCount;
   if (millis() > next_ms) {
