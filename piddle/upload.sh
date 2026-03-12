@@ -10,4 +10,4 @@ else
     exit 1
 fi
 
-arduino-cli upload -p $device --fqbn esp32:esp32:esp32da piddle.ino $@
+arduino-cli upload -p $device --fqbn esp32:esp32:esp32da:PartitionScheme=huge_app piddle.ino $@

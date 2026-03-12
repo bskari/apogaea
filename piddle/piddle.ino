@@ -7,6 +7,7 @@
 #include <FastLED.h>
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
+#include "artnetReceiver.hpp"
 #include "bluetoothAudio.hpp"
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
@@ -35,15 +36,27 @@ TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
 I2SClocklessLedDriver driver;
 
-void IRAM_ATTR buttonInterrupt() {
-  static uint8_t index = 0;
-  const uint8_t brightnesses[] = {8, 16, 32, 64, 32, 16, 8};
-  const char* const percents[] = {"6", "13", "25", "50", "100"};
+static volatile bool artnetToggleRequested = false;
+static constexpr uint8_t brightnesses[] = {8, 16, 32, 64, 32, 16, 8};
+// brightnessIndex starts at 3 to match the initial setBrightness(64) in setup()
+static volatile uint8_t brightnessIndex = 3;
 
-  index = (index + 1) % COUNT_OF(brightnesses);
-  const uint8_t brightness = brightnesses[index];
-  Serial.printf("brightness %d (%s %%)\n", brightness, percents[index]);
-  driver.setBrightness(brightness);
+void IRAM_ATTR buttonInterrupt() {
+  static uint32_t pressTime = 0;
+
+  if (digitalRead(0) == LOW) {
+    // Falling edge - record press time
+    pressTime = millis();
+  } else {
+    // Rising edge - decide action based on hold duration
+    uint32_t elapsed = millis() - pressTime;
+    if (elapsed < 50) return; // debounce
+    if (elapsed >= 1000) {
+      artnetToggleRequested = true;
+    } else {
+      brightnessIndex = (brightnessIndex + 1) % COUNT_OF(brightnesses);
+    }
+  }
 }
 
 void setup() {
@@ -58,11 +71,11 @@ void setup() {
   pinMode(VOLTAGE_PIN, INPUT);
 
   driver.initled(reinterpret_cast<uint8_t*>(leds), LED_PINS, COUNT_OF(LED_PINS), LEDS_PER_STRIP, ORDER_RGB);
-  driver.setBrightness(64);
+  driver.setBrightness(brightnesses[brightnessIndex]);
 
   // The boot button is connected to GPIO0
   pinMode(0, INPUT);
-  attachInterrupt(0, buttonInterrupt, FALLING);
+  attachInterrupt(0, buttonInterrupt, CHANGE);
 
   RemoteXY.brightnessSlider = 25;
   RemoteXY.rainbowSwitch = false;
@@ -73,13 +86,13 @@ void setup() {
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
     "collectSamples",
-    4000, // Stack size in words
+    8000, // Stack size in words
     nullptr, // Task input parameter
     1, // Priority of the task
     &collectSamplesTask, // Task handle.
     1); // Core where the task should run
 
-  setupBluetoothAudio(collectSamplesTask, "Sonic Bloom");
+  setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
 
   // Test all the logic level converter LEDs
   uint8_t hue = 0;
@@ -103,7 +116,8 @@ void setup() {
   xTaskCreatePinnedToCore(
     displayLedsFunction,
     "displayLeds",
-    4000, // Stack size in words
+    // Stack size in words. From printing uxTaskGetStackHighWaterMark, looks like it's using 2428 words.
+    3500, // Stack size in words.
     nullptr, // Task input parameter
     1, // Priority of the task
     &displayLedsTask, // Task handle.
@@ -111,7 +125,22 @@ void setup() {
 }
 
 void loop() {
-  delay(10000);
+  static bool artnetStarted = false;
+
+  if (artnetToggleRequested) {
+    artnetToggleRequested = false;
+    if (!artnetStarted) {
+      // First time: start WiFi and ArtNet receiver task (blocks up to 10s)
+      setupArtnet();
+      artnetStarted = true;
+      artnetEnabled = true;
+    } else {
+      artnetEnabled = !artnetEnabled;
+      Serial.printf("ArtNet mode %s\n", artnetEnabled ? "enabled" : "disabled");
+    }
+  }
+
+  delay(100);
 }
 
 void collectSamplesFunction(void*) {
@@ -122,23 +151,31 @@ void collectSamplesFunction(void*) {
 
 void displayLedsFunction(void*) {
   while (1) {
-    for (int i = 0; i < 100; ++i) {
-      displaySpectrumAnalyzer(
-        RemoteXY.brightnessSlider,
-        RemoteXY.rainbowSwitch,
-        RemoteXY.normalizeBandsSwitch,
-        RemoteXY.sensitivitySlider,
-        RemoteXY.speedSlider);
+    if (artnetEnabled && artnetActive) {
+      // ArtNet mode: copy incoming pixel buffer to LED array and push to strips
+      memcpy(leds, artnetPixels, sizeof(leds));
+      driver.showPixels(NO_WAIT);
+      delay(25); // ~40 fps
+    } else {
+      // Audio-reactive mode (default)
+      for (int i = 0; i < 100; ++i) {
+        displaySpectrumAnalyzer(
+          RemoteXY.brightnessSlider,
+          RemoteXY.rainbowSwitch,
+          RemoteXY.normalizeBandsSwitch,
+          RemoteXY.sensitivitySlider,
+          RemoteXY.speedSlider);
 
-      if (Serial.available() > 0) {
-        logDebug = true;
-        while (Serial.available() > 0) {
-          Serial.read();
+        if (Serial.available() > 0) {
+          logDebug = true;
+          while (Serial.available() > 0) {
+            Serial.read();
+          }
         }
       }
+      // Keep the watchdog happy
+      delay(1);
     }
-    // Keep the watchdog happy
-    delay(1);
   }
 }
 

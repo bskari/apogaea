@@ -21,4 +21,4 @@ Hardware
 
 - ESP32 WROOM 32
 - I2S microphone
-- 10 WS2812B LED strips
+- 15 WS2812B LED strips
