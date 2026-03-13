@@ -29,6 +29,14 @@ static void audioDataCallback(const uint8_t* data, uint32_t length) {
   writeBtSamples(data, length);
 }
 
+void teardownBluetoothAudio() {
+  a2dp_sink.end(true); // true = release BT/radio resources
+  bluetoothActive = false;
+  if (micTask) {
+    vTaskResume(micTask);
+  }
+}
+
 void setupBluetoothAudio(TaskHandle_t collectSamplesTask, const char* deviceName) {
   micTask = collectSamplesTask;
   a2dp_sink.set_on_connection_state_changed(onConnectionStateChanged);

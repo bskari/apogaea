@@ -129,7 +129,9 @@ void loop() {
 
   if (artnetToggleRequested) {
     artnetToggleRequested = false;
-    if (!artnetStarted) {
+    // ArtNet is starting on first boot - maybe the button is weird? Anyway, that's killing
+    // Bluetooth. Let's just disable this until a second after boot.
+    if (millis() > 1000 && !artnetStarted) {
       // First time: start WiFi and ArtNet receiver task (blocks up to 10s)
       setupArtnet();
       artnetStarted = true;
