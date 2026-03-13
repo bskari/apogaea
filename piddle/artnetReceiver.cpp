@@ -1,4 +1,6 @@
 #include "artnetReceiver.hpp"
+#ifdef USE_ARTNET
+
 #include "bluetoothAudio.hpp"
 #include "secrets.hpp"
 
@@ -31,7 +33,6 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 // ---------------------------------------------------------------------------
 
 void setupArtnet() {
-  teardownBluetoothAudio();
   Serial.printf("ArtNet: connecting to WiFi '%s'...\n", WIFI_SSID);
   WiFi.mode(WIFI_STA);
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
@@ -200,3 +201,5 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   udp.write(reply, sizeof(reply));
   udp.endPacket();
 }
+
+#endif // USE_ARTNET

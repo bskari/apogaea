@@ -1,3 +1,6 @@
+#include "constants.hpp"
+#ifdef USE_BLUETOOTH
+
 #include <Arduino.h>
 #include <BluetoothA2DPSink.h>
 
@@ -44,3 +47,5 @@ void setupBluetoothAudio(TaskHandle_t collectSamplesTask, const char* deviceName
   a2dp_sink.set_stream_reader(audioDataCallback, false);
   a2dp_sink.start(deviceName);
 }
+
+#endif // USE_BLUETOOTH

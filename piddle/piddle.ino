@@ -6,26 +6,25 @@
 
 #include <FastLED.h>
 
+// You must Select exactly one wireless input mode and define it an the command line using
+// --build-property
+#if !defined(USE_BLUETOOTH) && !defined(USE_ARTNET)
+  #error "Must define either USE_BLUETOOTH or USE_ARTNET"
+#endif
+
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
 #include "artnetReceiver.hpp"
 #include "bluetoothAudio.hpp"
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
-// this structure defines all the variables and events of your control interface
 struct {
-
-    // input variables
   int8_t brightnessSlider; // from 0 to 100
   int8_t sensitivitySlider; // from 0 to 100
   int8_t speedSlider; // from 0 to 100
   uint8_t rainbowSwitch; // =1 if switch ON and =0 if OFF
   uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF
-
-    // other variable
-  uint8_t connect_flag;  // =1 if wire connected, else =0
-
-} RemoteXY;
+} configuration;
 
 void blink(const int delay_ms = 500);
 
@@ -36,7 +35,9 @@ TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
 I2SClocklessLedDriver driver;
 
-static volatile bool artnetToggleRequested = false;
+#ifdef USE_ARTNET
+  static volatile bool artnetToggleRequested = false;
+#endif
 static constexpr uint8_t brightnesses[] = {8, 16, 32, 64, 32, 16, 8};
 // brightnessIndex starts at 3 to match the initial setBrightness(64) in setup()
 static volatile uint8_t brightnessIndex = 3;
@@ -51,11 +52,15 @@ void IRAM_ATTR buttonInterrupt() {
     // Rising edge - decide action based on hold duration
     uint32_t elapsed = millis() - pressTime;
     if (elapsed < 50) return; // debounce
-    if (elapsed >= 1000) {
-      artnetToggleRequested = true;
-    } else {
+    #ifdef USE_ARTNET
+      if (elapsed >= 1000) {
+        artnetToggleRequested = true;
+      } else {
+        brightnessIndex = (brightnessIndex + 1) % COUNT_OF(brightnesses);
+      }
+    #else
       brightnessIndex = (brightnessIndex + 1) % COUNT_OF(brightnesses);
-    }
+    #endif
   }
 }
 
@@ -77,11 +82,11 @@ void setup() {
   pinMode(0, INPUT);
   attachInterrupt(0, buttonInterrupt, CHANGE);
 
-  RemoteXY.brightnessSlider = 25;
-  RemoteXY.rainbowSwitch = false;
-  RemoteXY.normalizeBandsSwitch = false;
-  RemoteXY.speedSlider = 85;
-  RemoteXY.sensitivitySlider = 50;
+  configuration.brightnessSlider = 25;
+  configuration.rainbowSwitch = false;
+  configuration.normalizeBandsSwitch = false;
+  configuration.speedSlider = 85;
+  configuration.sensitivitySlider = 50;
 
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
@@ -92,7 +97,9 @@ void setup() {
     &collectSamplesTask, // Task handle.
     1); // Core where the task should run
 
+#ifdef USE_BLUETOOTH
   setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
+#endif
 
   // Test all the logic level converter LEDs
   uint8_t hue = 0;
@@ -125,22 +132,24 @@ void setup() {
 }
 
 void loop() {
-  static bool artnetStarted = false;
+  #ifdef USE_ARTNET
+    static bool artnetStarted = false;
 
-  if (artnetToggleRequested) {
-    artnetToggleRequested = false;
-    // ArtNet is starting on first boot - maybe the button is weird? Anyway, that's killing
-    // Bluetooth. Let's just disable this until a second after boot.
-    if (millis() > 1000 && !artnetStarted) {
-      // First time: start WiFi and ArtNet receiver task (blocks up to 10s)
-      setupArtnet();
-      artnetStarted = true;
-      artnetEnabled = true;
-    } else {
-      artnetEnabled = !artnetEnabled;
-      Serial.printf("ArtNet mode %s\n", artnetEnabled ? "enabled" : "disabled");
+    if (artnetToggleRequested) {
+      artnetToggleRequested = false;
+      // ArtNet is starting on first boot - maybe the button is weird? Anyway, that's killing
+      // Bluetooth. Let's just disable this until a second after boot.
+      if (millis() > 1000 && !artnetStarted) {
+        // First time: start WiFi and ArtNet receiver task (blocks up to 10s)
+        setupArtnet();
+        artnetStarted = true;
+        artnetEnabled = true;
+      } else {
+        artnetEnabled = !artnetEnabled;
+        Serial.printf("ArtNet mode %s\n", artnetEnabled ? "enabled" : "disabled");
+      }
     }
-  }
+  #endif
 
   delay(100);
 }
@@ -153,20 +162,23 @@ void collectSamplesFunction(void*) {
 
 void displayLedsFunction(void*) {
   while (1) {
-    if (artnetEnabled && artnetActive) {
-      // ArtNet mode: copy incoming pixel buffer to LED array and push to strips
-      memcpy(leds, artnetPixels, sizeof(leds));
-      driver.showPixels(NO_WAIT);
-      delay(25); // ~40 fps
-    } else {
+    #ifdef USE_ARTNET
+      if (artnetEnabled && artnetActive) {
+        // ArtNet mode: copy incoming pixel buffer to LED array and push to strips
+        memcpy(leds, artnetPixels, sizeof(leds));
+        driver.showPixels(NO_WAIT);
+        delay(25); // ~40 fps
+        continue;
+      } else {
+    #endif
       // Audio-reactive mode (default)
       for (int i = 0; i < 100; ++i) {
         displaySpectrumAnalyzer(
-          RemoteXY.brightnessSlider,
-          RemoteXY.rainbowSwitch,
-          RemoteXY.normalizeBandsSwitch,
-          RemoteXY.sensitivitySlider,
-          RemoteXY.speedSlider);
+          configuration.brightnessSlider,
+          configuration.rainbowSwitch,
+          configuration.normalizeBandsSwitch,
+          configuration.sensitivitySlider,
+          configuration.speedSlider);
 
         if (Serial.available() > 0) {
           logDebug = true;
@@ -177,7 +189,9 @@ void displayLedsFunction(void*) {
       }
       // Keep the watchdog happy
       delay(1);
+    #ifdef USE_ARTNET
     }
+    #endif
   }
 }
 

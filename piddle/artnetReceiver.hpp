@@ -1,7 +1,10 @@
 #pragma once
 
-#include <FastLED.h>
 #include "constants.hpp"
+
+#ifdef USE_ARTNET
+
+#include <FastLED.h>
 
 // Start WiFi and the ArtNet receiver task. Blocks up to 10s for WiFi.
 // Call from loop() on Core 1 so the LED display keeps running during connect.
@@ -21,3 +24,5 @@ extern volatile bool artnetEnabled;
 // Strip N corresponds to ArtNet universe N (universe offset 0).
 // LED 0 is the centre of each strip.
 extern CRGB artnetPixels[STRIP_COUNT][LEDS_PER_STRIP];
+
+#endif // USE_ARTNET
