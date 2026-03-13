@@ -340,8 +340,14 @@ def run_simulation(options: Options) -> None:
         plt.show()
 
 
-DEFAULT_W = 2.478 * 2 * 12
-IDLE_W = 1.614 * 2 * 12
+# These numbers came from testing 5 LED strips. I measured 2.478A when responding to music, and
+# 1.614A when idling.
+# TODO: I think the test I ran used the whole strip, but the dome only turns on 80% of the strip,
+# and the rest are idle. I should reduce those these measurements.
+DEFAULT_A_PER_STRIP = 2.478 / 5
+IDLE_A_PER_STRIP = 1.614 / 5
+DEFAULT_W = DEFAULT_A_PER_STRIP * 15 * 12
+IDLE_W = IDLE_A_PER_STRIP * 15 * 12
 def make_parser() -> ArgumentParser:
     """Makes a parser."""
     parser = ArgumentParser(prog="power_sim", formatter_class=ArgumentDefaultsHelpFormatter)
