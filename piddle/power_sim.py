@@ -276,52 +276,60 @@ def draw_plot(
     annotations,
     total_minutes: int,
     START_HOUR: int,
+    tick_info: tuple | None = None,
 ) -> None:
     """Draw the simulation results onto the given matplotlib Axes."""
     END_DAY = 8 if options.start_day == 0 else 7
 
-    hours_to_skip = 6
-    if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
-        hours_to_skip = 12
-    if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
-        hours_to_skip = 24
-    tick_positions = [m for m in range(total_minutes) if m % (hours_to_skip * 60) == 0]
-    tick_labels = [
-        f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00"
-        for m in tick_positions
-    ]
+    if tick_info is None:
+        hours_to_skip = 6
+        if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
+            hours_to_skip = 12
+        if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
+            hours_to_skip = 24
+        tick_positions = [
+            m for m in range(total_minutes) if m % (hours_to_skip * 60) == 0
+        ]
+        tick_labels = [
+            f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00"
+            for m in tick_positions
+        ]
+    else:
+        tick_positions, tick_labels = tick_info
 
-    already_labelled = set()
+    # Group segments by color with NaN breaks between non-contiguous pieces,
+    # so each color needs only one ax.plot() call.
+    nan = float("nan")
+    groups: dict = {}  # color -> {"label": str, "x": list, "y": list, "last_end": int}
     for start, end in zip(toggle_power_times[:-1], toggle_power_times[1:]):
         if start.day_charging:
-            if start.limited:
-                color = "darkblue"
-                label = "off, day charge, limited"
-            else:
-                color = "blue"
-                label = "off, day charge"
+            color, label = (
+                ("darkblue", "off, day charge, limited")
+                if start.limited
+                else ("blue", "off, day charge")
+            )
         elif start.limited:
-            if start.on:
-                color = "red"
-                label = "on, limited"
-            else:
-                color = "purple"
-                label = "off, limited"
+            color, label = (
+                ("red", "on, limited") if start.on else ("purple", "off, limited")
+            )
         elif start.on:
-            color = "orange"
-            label = "on"
+            color, label = "orange", "on"
         else:
-            color = "black"
-            label = "off"
-        plot_kwargs: dict = dict(color=color)
-        if label not in already_labelled:
-            plot_kwargs["label"] = label
-            already_labelled.add(label)
-        ax.plot(
-            range(start.minute, end.minute),
-            battery_wh_by_minute[start.minute : end.minute],
-            **plot_kwargs,
-        )
+            color, label = "black", "off"
+        xs = list(range(start.minute, end.minute))
+        ys = battery_wh_by_minute[start.minute : end.minute]
+        if color not in groups:
+            groups[color] = {"label": label, "x": xs, "y": ys, "last_end": end.minute}
+        else:
+            g = groups[color]
+            if g["last_end"] != start.minute:
+                g["x"].append(nan)
+                g["y"].append(nan)
+            g["x"].extend(xs)
+            g["y"].extend(ys)
+            g["last_end"] = end.minute
+    for color, g in groups.items():
+        ax.plot(g["x"], g["y"], color=color, label=g["label"])
 
     for message, position, offset in annotations:
         ax.annotate(
@@ -415,9 +423,24 @@ def run_simulation(options: Options) -> None:
 
     from matplotlib.widgets import Slider
 
+    # Tick positions/labels depend only on start_day and total_minutes, which
+    # don't change when sliders move, so compute them once.
+    END_DAY = 8 if options.start_day == 0 else 7
+    hours_to_skip = 6
+    if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
+        hours_to_skip = 12
+    if (END_DAY - options.start_day) * 24 // hours_to_skip > 25:
+        hours_to_skip = 24
+    tick_positions = [m for m in range(total_minutes) if m % (hours_to_skip * 60) == 0]
+    tick_labels = [
+        f"{get_day((options.start_day * 24 * 60 + START_HOUR * 60 + m) // (60 * 24))[:2]}\n{((m + 60 * START_HOUR) // 60) % 24:02d}:00"
+        for m in tick_positions
+    ]
+    tick_info = (tick_positions, tick_labels)
+
     fig = plt.figure(figsize=(12, 7), num="Solar power simulation")
 
-    # Main plot area — leave the bottom 24% for sliders
+    # Main plot area - leave the bottom 24% for sliders
     ax = fig.add_axes([0.08, 0.30, 0.89, 0.62])
     draw_plot(
         ax,
@@ -427,9 +450,10 @@ def run_simulation(options: Options) -> None:
         annotations,
         total_minutes,
         START_HOUR,
+        tick_info=tick_info,
     )
 
-    # ── Slider initial values ────────────────────────────────────────────────
+    # Slider initial values
     init_brightness = (options.project_w - IDLE_W) / (DEFAULT_W - IDLE_W) * 100
     init_min_bat = options.off_battery_wh / options.max_battery_wh * 100
     init_resume_bat = options.resume_battery_wh / options.max_battery_wh * 100
@@ -438,12 +462,12 @@ def run_simulation(options: Options) -> None:
     )
 
     width = 0.31
-    # ── Left column ──────────────────────────────────────────────────────────
+    # Left column
     ax_battery = fig.add_axes([0.12, 0.16, width, 0.025])
     ax_solar = fig.add_axes([0.12, 0.12, width, 0.025])
     ax_max_charge = fig.add_axes([0.12, 0.08, width, 0.025])
 
-    # ── Right column ─────────────────────────────────────────────────────────
+    # Right column
     ax_min_bat = fig.add_axes([0.59, 0.16, width, 0.025])
     ax_resume_bat = fig.add_axes([0.59, 0.12, width, 0.025])
     ax_brightness = fig.add_axes([0.59, 0.08, width, 0.025])
@@ -460,7 +484,7 @@ def run_simulation(options: Options) -> None:
         ax_solar, "Solar (W)", 0, 600, valinit=options.solar_w, valstep=5
     )
     slider_max_charge = Slider(
-        ax_max_charge, "Max charge (W)", 0, 400, valinit=init_max_charge, valstep=5
+        ax_max_charge, "Max charge (W)", 0, 600, valinit=init_max_charge, valstep=5
     )
     slider_min_bat = Slider(
         ax_min_bat, "Min battery (%)", 1, 99, valinit=init_min_bat, valstep=1
@@ -512,7 +536,14 @@ def run_simulation(options: Options) -> None:
         )
         ax.cla()
         draw_plot(
-            ax, new_options, new_bwm, new_toggles, new_ann, new_total, new_start_hour
+            ax,
+            new_options,
+            new_bwm,
+            new_toggles,
+            new_ann,
+            new_total,
+            new_start_hour,
+            tick_info=tick_info,
         )
         fig.canvas.draw_idle()
 
@@ -567,7 +598,7 @@ def make_parser() -> ArgumentParser:
         # For the MPPT 75/10, the max rate is 145W, but I usually only saw
         # ~138. For the MPPT 100/20, the max rate is 290W, so maybe 276 in
         # real world settings.
-        default=138,
+        default=290,
     )
     parser.add_argument(
         "--min-battery",
