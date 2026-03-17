@@ -106,7 +106,7 @@ void processDSP(DSPState* s, const int16_t* samples, uint8_t sensitivity_p,
         s->output[i] *= s->weightingConstants[i];
     }
 
-    const float minimumDivisor = square((130 - sensitivity_p) * 50.0f);
+    const float minimumDivisor = square((130 - sensitivity_p) * 9000.0f);
     normalizeTo0_1(s->output, SAMPLE_COUNT, minimumDivisor);
 
     for (int note = 0; note < NOTE_COUNT; ++note) {

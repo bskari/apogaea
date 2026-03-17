@@ -2,7 +2,7 @@ Piddle
 ======
 
 Sound reactive LED strips, originating from a central point and placed in a
-geodesic dome. Running on a custom PCB with ESP32. Coming soon: ArtNet DMX!
+geodesic dome. Running on a custom PCB with ESP32.
 
 Wiring
 ------
