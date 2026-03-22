@@ -24,6 +24,7 @@ struct {
   int8_t speedSlider; // from 0 to 100
   uint8_t rainbowSwitch; // =1 if switch ON and =0 if OFF
   uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF
+  uint8_t patternLength; // number of LEDs per repeating tile (5..LEDS_PER_STRIP)
 } configuration;
 
 void blink(const int delay_ms = 500);
@@ -87,6 +88,7 @@ void setup() {
   configuration.normalizeBandsSwitch = false;
   configuration.speedSlider = 85;
   configuration.sensitivitySlider = 50;
+  configuration.patternLength = 20;
 
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
@@ -178,7 +180,8 @@ void displayLedsFunction(void*) {
           configuration.rainbowSwitch,
           configuration.normalizeBandsSwitch,
           configuration.sensitivitySlider,
-          configuration.speedSlider);
+          configuration.speedSlider,
+          configuration.patternLength);
 
         if (Serial.available() > 0) {
           logDebug = true;

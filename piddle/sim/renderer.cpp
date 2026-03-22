@@ -44,10 +44,12 @@ CRGB hsv2rgb(CHSV hsv) {
     }
 }
 
-void slideDown(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP], int count) {
-    const int byteCount = (LEDS_PER_STRIP - count) * sizeof(leds[0][0]);
+static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
+
+static void slideDown(int count, int patternLength) {
+    const int byteCount = (patternLength - count) * sizeof(patternBuffer[0][0]);
     for (int i = 0; i < STRIP_COUNT; ++i) {
-        memmove(&leds[i][count], &leds[i][0], byteCount);
+        memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
     }
 }
 
@@ -59,16 +61,16 @@ static uint8_t quadwave8(uint8_t x) {
 
 void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                const float noteValuesIn[NOTE_COUNT],
-               bool rainbow, bool normalizeBands, uint32_t millis) {
+               bool rainbow, bool normalizeBands, uint32_t millis, int patternLength) {
     const int c4Index  = 11;
     const int startNote = c4Index - 4; // = 7
 
-    slideDown(leds, SLIDE_COUNT);
+    slideDown(SLIDE_COUNT, patternLength);
 
-    // Clear the head positions after slide
+    // Clear the head positions of the pattern buffer after slide
     for (int i = 0; i < STRIP_COUNT; ++i) {
         for (int j = 0; j < SLIDE_COUNT; ++j) {
-            leds[i][j] = CRGB::Black;
+            patternBuffer[i][j] = CRGB::Black;
         }
     }
 
@@ -122,7 +124,7 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
 
         CRGB color = hsv2rgb(CHSV(hue, 255, gammaCorrected));
         for (int i = 0; i < SLIDE_COUNT; ++i) {
-            leds[strip][i] += color;
+            patternBuffer[strip][i] += color;
         }
 
         ++strip;
@@ -133,5 +135,19 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                 65536 / 3 - (int)hue16Step * STRIP_COUNT * 2);
             hue16 += step;
         }
+    }
+
+    // Tile patternBuffer across each full strip
+    for (int i = 0; i < STRIP_COUNT; ++i) {
+        for (int j = 0; j < LEDS_PER_STRIP; ++j) {
+            leds[i][j] = patternBuffer[i][j % patternLength];
+        }
+    }
+
+    // Dim the diode LED at physical position 0
+    for (int i = 0; i < STRIP_COUNT; ++i) {
+        leds[i][0].r /= 3;
+        leds[i][0].g /= 3;
+        leds[i][0].b /= 3;
     }
 }

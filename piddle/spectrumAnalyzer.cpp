@@ -56,9 +56,11 @@ extern CRGB leds[STRIP_COUNT][LEDS_PER_STRIP];
 extern I2SClocklessLedDriver driver;
 extern bool logDebug;
 
+static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
+
 static void computeFft();
-static void renderFft(bool rainbow, bool normalizeBands);
-static void slideDown(int count);
+static void renderFft(bool rainbow, bool normalizeBands, int patternLength);
+static void slideDown(int count, int patternLength);
 static float maxOutputForNote(int note);
 static void normalizeTo0_1(float samples[], int length, float minimumDivisor);
 static void logOutputNotes();
@@ -99,14 +101,14 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft(const bool rainbow, const bool normalizeBands) {
+static void renderFft(const bool rainbow, const bool normalizeBands, const int patternLength) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
   // on the outside edge, going up, and the other notes to trickle down from the center.
 
   // Slide down more than once to make it move faster (just 1 for developing)
-  slideDown(SLIDE_COUNT);
+  slideDown(SLIDE_COUNT, patternLength);
 
   float noteValues[NOTE_COUNT];
   for (int note = 0; note < NOTE_COUNT; ++note) {
@@ -123,10 +125,7 @@ static void renderFft(const bool rainbow, const bool normalizeBands) {
   int strip = 0;
   for (int i = 0; i < STRIP_COUNT; ++i) {
     for (int j = 0; j < SLIDE_COUNT; ++j) {
-      leds[i][j] = CRGB::Black;
-      #if DOUBLE_ENDED
-        leds[i][LEDS_PER_STRIP - j - 1] = CRGB::Black;
-      #endif
+      patternBuffer[i][j] = CRGB::Black;
     }
   }
 
@@ -180,12 +179,8 @@ static void renderFft(const bool rainbow, const bool normalizeBands) {
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
 
-      // Remove this so the LEDs on the board don't light up (i.e., this is for testing)
-      leds[strip][0] += CHSV(hue, 255, gammaCorrected / 3);
-
-      // Do SLIDE_COUNT + 1 because the first LED is the logic level shifter on the PCB
-      for (int i = 1; i < SLIDE_COUNT + 1; ++i) {
-        leds[strip][i] += CHSV(hue, 255, gammaCorrected);
+      for (int i = 0; i < SLIDE_COUNT; ++i) {
+        patternBuffer[strip][i] += CHSV(hue, 255, gammaCorrected);
       }
     }
     ++note;
@@ -214,6 +209,20 @@ static void renderFft(const bool rainbow, const bool normalizeBands) {
       static_assert(step > 0);
       hue16 += step;
     }
+  }
+
+  // Tile patternBuffer across each full strip
+  for (int i = 0; i < STRIP_COUNT; ++i) {
+    for (int j = 0; j < LEDS_PER_STRIP; ++j) {
+      leds[i][j] = patternBuffer[i][j % patternLength];
+    }
+  }
+
+  // Dim the diode LED at physical position 0 (logic level shifter, for testing only)
+  for (int i = 0; i < STRIP_COUNT; ++i) {
+    leds[i][0].r /= 3;
+    leds[i][0].g /= 3;
+    leds[i][0].b /= 3;
   }
 
   // Shut off the ends of the strips
@@ -277,7 +286,8 @@ void displaySpectrumAnalyzer(
   const bool rainbow,
   const bool normalizeBands,
   const uint8_t sensitivity_p,
-  const uint8_t speed_p
+  const uint8_t speed_p,
+  const int patternLength
 ) {
   const decltype(millis()) logTime_ms = 5000;
   static auto next_ms = 1000;
@@ -349,7 +359,7 @@ void displaySpectrumAnalyzer(
   const auto compute_us = micros() - part_us;
 
   part_us = micros();
-  renderFft(rainbow, normalizeBands);
+  renderFft(rainbow, normalizeBands, patternLength);
   const auto render_us = micros() - part_us;
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
@@ -423,29 +433,10 @@ void displaySpectrumAnalyzer(
 
 }
 
-static void slideDown(const int count) {
-  #if DOUBLE_ENDED
-    int byteCount = (LEDS_PER_STRIP / 2 - count) * sizeof(leds[0][0]);
-    if (LEDS_PER_STRIP % 2 == 1) {
-      byteCount += sizeof(leds[0][0]);
-    }
-  #else
-    const int byteCount = (LEDS_PER_STRIP - count) * sizeof(leds[0][0]);
-  #endif
-
+static void slideDown(const int count, const int patternLength) {
+  const int byteCount = (patternLength - count) * sizeof(patternBuffer[0][0]);
   for (int i = 0; i < STRIP_COUNT; ++i) {
-    memmove(
-      &leds[i][count],
-      &leds[i][0],
-      byteCount
-    );
-    #if DOUBLE_ENDED
-      memmove(
-        &leds[i][LEDS_PER_STRIP / 2],
-        &leds[i][LEDS_PER_STRIP / 2 + count],
-        byteCount
-      );
-    #endif
+    memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
   }
 }
 

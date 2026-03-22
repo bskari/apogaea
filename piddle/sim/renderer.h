@@ -18,9 +18,8 @@ struct CHSV {
 
 CRGB hsv2rgb(CHSV hsv);
 
-void slideDown(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP], int count);
-
 // millis: current time in milliseconds (for hue animation).
+// patternLength: number of LEDs per repeating tile (5..LEDS_PER_STRIP).
 void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                const float noteValues[NOTE_COUNT],
-               bool rainbow, bool normalizeBands, uint32_t millis);
+               bool rainbow, bool normalizeBands, uint32_t millis, int patternLength);
