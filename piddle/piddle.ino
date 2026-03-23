@@ -167,6 +167,11 @@ void collectSamplesFunction(void*) {
 void displayLedsFunction(void*) {
   while (1) {
     #ifdef USE_ARTNET
+      if (artnetWifiShutdownNeeded) {
+        teardownArtnet();
+        driver.initled(reinterpret_cast<uint8_t*>(leds), LED_PINS, COUNT_OF(LED_PINS), LEDS_PER_STRIP, ORDER_RGB);
+        driver.setBrightness(brightnesses[brightnessIndex]);
+      }
       if (artnetEnabled && artnetActive) {
         // ArtNet mode: copy incoming pixel buffer to LED array and push to strips
         memcpy(leds, artnetPixels, sizeof(leds));

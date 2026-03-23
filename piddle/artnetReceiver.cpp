@@ -15,6 +15,7 @@
 
 volatile bool artnetActive  = false;
 volatile bool artnetEnabled = false;
+volatile bool artnetWifiShutdownNeeded = false;
 
 CRGB artnetPixels[STRIP_COUNT][LEDS_PER_STRIP];
 
@@ -82,6 +83,7 @@ void artnetReceiverFunction(void*) {
       // Nothing arrived - check timeout and yield to display task
       if (artnetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
         artnetActive = false;
+        artnetWifiShutdownNeeded = true;
         Serial.println("ArtNet: signal lost, reverting to audio mode");
       }
       vTaskDelay(1 / portTICK_PERIOD_MS);
@@ -200,6 +202,14 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   udp.beginPacket(dest, ARTNET_PORT);
   udp.write(reply, sizeof(reply));
   udp.endPacket();
+}
+
+void teardownArtnet() {
+  artnetWifiShutdownNeeded = false;
+  udp.stop();
+  WiFi.disconnect(true);
+  WiFi.mode(WIFI_OFF);
+  Serial.println("ArtNet: WiFi shut down");
 }
 
 #endif // USE_ARTNET

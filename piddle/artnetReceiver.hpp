@@ -20,6 +20,14 @@ extern volatile bool artnetActive;
 // When false the display ignores incoming ArtNet data and runs audio mode.
 extern volatile bool artnetEnabled;
 
+// Set when signal has been lost and WiFi should be torn down to restore DAC pins.
+// Check this from the display task and call teardownArtnet() + reinit the LED driver.
+extern volatile bool artnetWifiShutdownNeeded;
+
+// Stops the UDP socket and shuts down WiFi. Call from the display task when
+// artnetWifiShutdownNeeded is set, then reinitialise the LED driver.
+void teardownArtnet();
+
 // Most recent pixel data received from ArtNet, indexed [strip][led].
 // Strip N corresponds to ArtNet universe N (universe offset 0).
 // LED 0 is the centre of each strip.
