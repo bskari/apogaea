@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void displaySpectrumAnalyzer(uint8_t brightness_p, bool rainbow, bool normalizeBands, uint8_t sensitivity_p, uint8_t speed_p, int patternLength);
+void displaySpectrumAnalyzer(uint8_t brightness_p, bool rainbow, bool normalizeBands, uint8_t sensitivity_p, uint8_t speed_p, int patternLength, int tileOffset);
 void setupSpectrumAnalyzer();
 void collectSamples();
 

@@ -5,21 +5,24 @@
 #include "sim_constants.h"
 
 #include <SDL2/SDL.h>
+#include <SDL2/SDL_keycode.h>
 #include <algorithm>
 #include <cstdio>
 #include <cstring>
 
 static void printHelp() {
-    printf("Piddle Simulator\n");
+    printf("Sonic Bloom Simulator\n");
     printf("Controls:\n");
-    printf("  R         Toggle rainbow mode\n");
-    printf("  N         Toggle normalize bands\n");
-    printf("  Up/Down   Brightness +/- 5\n");
+    printf("  R           Toggle rainbow mode\n");
+    printf("  N           Toggle normalize bands\n");
+    printf("  Up/Down     Brightness +/- 5\n");
     printf("  Left/Right  Speed +/- 5\n");
-    printf("  ,/.       Sensitivity +/- 5\n");
-    printf("  [/]       Previous/Next audio file\n");
-    printf("  -/=       Pattern length -/+ 5\n");
-    printf("  Q/Escape  Quit\n");
+    printf("  ,/.         Sensitivity +/- 5\n");
+    printf("  [/]         Previous/Next audio file\n");
+    printf("  -/=         Pattern length -/+ 1\n");
+    printf("  Q/W         Tile offset -/+ 1\n");
+    printf("  H           Print help\n");
+    printf("  Escape      Quit\n");
     printf("\n");
 }
 
@@ -53,8 +56,9 @@ int main(int argc, char* argv[]) {
 
     uint8_t brightness_p   = 100;
     uint8_t sensitivity_p  = 50;
-    uint8_t speed_p        = 85;
-    int     patternLength  = 20;
+    uint8_t speed_p        = 80;
+    int     patternLength  = 24;
+    int     tileOffset     = 2;
     bool    rainbow        = false;
     bool    normalizeBands = false;
 
@@ -101,8 +105,18 @@ int main(int argc, char* argv[]) {
                 quit = true;
             } else if (ev.type == SDL_KEYDOWN) {
                 switch (ev.key.keysym.sym) {
+                    case SDLK_ESCAPE:
+                        quit = true;
+                        break;
                     case SDLK_q:
-                    case SDLK_ESCAPE: quit = true; break;
+                        tileOffset = std::min(tileOffset, patternLength - 1);
+                        tileOffset = std::max(0, tileOffset - 1);
+                        printf("Tile offset: %d\n", tileOffset);
+                        break;
+                    case SDLK_w:
+                        tileOffset = std::min(LEDS_PER_STRIP - 1, tileOffset + 1);
+                        printf("Tile offset: %d\n", tileOffset);
+                        break;
                     case SDLK_r:
                         rainbow = !rainbow;
                         printf("Rainbow: %s\n", rainbow ? "ON" : "OFF");
@@ -142,20 +156,34 @@ int main(int argc, char* argv[]) {
                         printf("Sensitivity: %d\n", sensitivity_p);
                         break;
                     case SDLK_RIGHTBRACKET:
-                        if (fileIdx + 1 < fileCount) { if (!loadFile(fileIdx + 1, 1)) printf("No more playable files.\n"); }
-                        else printf("Already at last file.\n");
+                        if (fileIdx + 1 < fileCount) {
+                            if (!loadFile(fileIdx + 1, 1)) {
+                                printf("No more playable files.\n");
+                            }
+                        } else {
+                            printf("Already at last file.\n");
+                        }
                         break;
                     case SDLK_LEFTBRACKET:
-                        if (fileIdx > 0) { if (!loadFile(fileIdx - 1, -1)) printf("No more playable files.\n"); }
-                        else printf("Already at first file.\n");
+                        if (fileIdx > 0) {
+                            if (!loadFile(fileIdx - 1, -1)) {
+                                printf("No more playable files.\n");
+                            }
+                        } else {
+                            printf("Already at first file.\n");
+                        }
                         break;
                     case SDLK_EQUALS:
-                        patternLength = std::min(LEDS_PER_STRIP, patternLength + 5);
+                        patternLength = std::min(LEDS_PER_STRIP, patternLength + 1);
                         printf("Pattern length: %d\n", patternLength);
                         break;
                     case SDLK_MINUS:
-                        patternLength = std::max(5, patternLength - 5);
+                        patternLength = std::max(5, patternLength - 1);
+                        tileOffset = std::min(tileOffset, patternLength - 1);
                         printf("Pattern length: %d\n", patternLength);
+                        break;
+                    case SDLK_h:
+                        printHelp();
                         break;
                     default: break;
                 }
@@ -173,9 +201,10 @@ int main(int argc, char* argv[]) {
 
         // Advance to next file when audio finishes, quit after the last one
         if (samplePos >= totalSamples) {
-            if (fileIdx + 1 < fileCount) {
-                if (!loadFile(fileIdx + 1, 1)) quit = true;
-            } else {
+            if (fileIdx + 1 >= fileCount) {
+                fileIdx = 0;
+            }
+            if (!loadFile(fileIdx, 1)) {
                 quit = true;
             }
             continue;
@@ -187,7 +216,7 @@ int main(int argc, char* argv[]) {
         float noteValues[NOTE_COUNT];
         processDSP(dsp, window, sensitivity_p, noteValues);
 
-        renderFft(leds, noteValues, rainbow, normalizeBands, SDL_GetTicks(), patternLength);
+        renderFft(leds, noteValues, rainbow, normalizeBands, SDL_GetTicks(), patternLength, tileOffset);
 
         // Apply brightness scale to a copy for display (don't modify the LED state)
         const float scale = static_cast<float>(brightness_p) / 100.0f;

@@ -59,8 +59,8 @@ extern bool logDebug;
 static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
 
 static void computeFft();
-static void renderFft(bool rainbow, bool normalizeBands, int patternLength);
-static void slideDown(int count, int patternLength);
+static void renderFft(bool rainbow, bool normalizeBands, int patternLength, int tileOffset);
+static void slideDown(int count);
 static float maxOutputForNote(int note);
 static void normalizeTo0_1(float samples[], int length, float minimumDivisor);
 static void logOutputNotes();
@@ -101,14 +101,14 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft(const bool rainbow, const bool normalizeBands, const int patternLength) {
+static void renderFft(const bool rainbow, const bool normalizeBands, const int patternLength, const int tileOffset) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
   // on the outside edge, going up, and the other notes to trickle down from the center.
 
   // Slide down more than once to make it move faster (just 1 for developing)
-  slideDown(SLIDE_COUNT, patternLength);
+  slideDown(SLIDE_COUNT);
 
   float noteValues[NOTE_COUNT];
   for (int note = 0; note < NOTE_COUNT; ++note) {
@@ -211,10 +211,12 @@ static void renderFft(const bool rainbow, const bool normalizeBands, const int p
     }
   }
 
-  // Tile patternBuffer across each full strip
+  // Tile patternBuffer across each full strip, with each tile offset into the history
   for (int i = 0; i < STRIP_COUNT; ++i) {
     for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-      leds[i][j] = patternBuffer[i][j % patternLength];
+      const int tileIndex = j / patternLength;
+      const int bufferPos = min((j % patternLength) + tileIndex * tileOffset, LEDS_PER_STRIP - 1);
+      leds[i][j] = patternBuffer[i][bufferPos];
     }
   }
 
@@ -287,7 +289,8 @@ void displaySpectrumAnalyzer(
   const bool normalizeBands,
   const uint8_t sensitivity_p,
   const uint8_t speed_p,
-  const int patternLength
+  const int patternLength,
+  const int tileOffset
 ) {
   const decltype(millis()) logTime_ms = 5000;
   static auto next_ms = 1000;
@@ -359,7 +362,7 @@ void displaySpectrumAnalyzer(
   const auto compute_us = micros() - part_us;
 
   part_us = micros();
-  renderFft(rainbow, normalizeBands, patternLength);
+  renderFft(rainbow, normalizeBands, patternLength, tileOffset);
   const auto render_us = micros() - part_us;
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
@@ -433,8 +436,8 @@ void displaySpectrumAnalyzer(
 
 }
 
-static void slideDown(const int count, const int patternLength) {
-  const int byteCount = (patternLength - count) * sizeof(patternBuffer[0][0]);
+static void slideDown(const int count) {
+  const int byteCount = (LEDS_PER_STRIP - count) * sizeof(patternBuffer[0][0]);
   for (int i = 0; i < STRIP_COUNT; ++i) {
     memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
   }

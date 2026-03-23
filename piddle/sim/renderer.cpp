@@ -46,8 +46,8 @@ CRGB hsv2rgb(CHSV hsv) {
 
 static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
 
-static void slideDown(int count, int patternLength) {
-    const int byteCount = (patternLength - count) * sizeof(patternBuffer[0][0]);
+static void slideDown(int count) {
+    const int byteCount = (LEDS_PER_STRIP - count) * sizeof(patternBuffer[0][0]);
     for (int i = 0; i < STRIP_COUNT; ++i) {
         memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
     }
@@ -61,11 +61,11 @@ static uint8_t quadwave8(uint8_t x) {
 
 void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                const float noteValuesIn[NOTE_COUNT],
-               bool rainbow, bool normalizeBands, uint32_t millis, int patternLength) {
+               bool rainbow, bool normalizeBands, uint32_t millis, int patternLength, int tileOffset) {
     const int c4Index  = 11;
     const int startNote = c4Index - 4; // = 7
 
-    slideDown(SLIDE_COUNT, patternLength);
+    slideDown(SLIDE_COUNT);
 
     // Clear the head positions of the pattern buffer after slide
     for (int i = 0; i < STRIP_COUNT; ++i) {
@@ -137,10 +137,12 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
         }
     }
 
-    // Tile patternBuffer across each full strip
+    // Tile patternBuffer across each full strip, with each tile offset into the history
     for (int i = 0; i < STRIP_COUNT; ++i) {
         for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-            leds[i][j] = patternBuffer[i][j % patternLength];
+            const int tileIndex = j / patternLength;
+            const int bufferPos = std::min((j % patternLength) + tileIndex * tileOffset, LEDS_PER_STRIP - 1);
+            leds[i][j] = patternBuffer[i][bufferPos];
         }
     }
 

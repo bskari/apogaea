@@ -20,6 +20,7 @@ CRGB hsv2rgb(CHSV hsv);
 
 // millis: current time in milliseconds (for hue animation).
 // patternLength: number of LEDs per repeating tile (5..LEDS_PER_STRIP).
+// tileOffset: history positions each successive tile shifts (0 = identical copies).
 void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                const float noteValues[NOTE_COUNT],
-               bool rainbow, bool normalizeBands, uint32_t millis, int patternLength);
+               bool rainbow, bool normalizeBands, uint32_t millis, int patternLength, int tileOffset);
