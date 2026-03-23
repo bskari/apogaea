@@ -10,6 +10,14 @@
 #include <cstdio>
 #include <cstring>
 
+uint8_t brightness_p   = 100;
+uint8_t sensitivity_p  = 50;
+uint8_t speed_p        = 80;
+int     patternLength  = 24;
+int     tileOffset     = 2;
+bool    rainbow        = false;
+bool    normalizeBands = false;
+
 static void printHelp() {
     printf("Sonic Bloom Simulator\n");
     printf("Controls:\n");
@@ -23,6 +31,14 @@ static void printHelp() {
     printf("  Q/W         Tile offset -/+ 1\n");
     printf("  H           Print help\n");
     printf("  Escape      Quit\n");
+    printf("brightness:%d sensitivity:%d speed:%d patternLength:%d tileOffset:%d rainbow:%d normalizeBands:%d\n",
+        brightness_p,
+        sensitivity_p,
+        speed_p,
+        patternLength,
+        tileOffset,
+        rainbow,
+        normalizeBands);
     printf("\n");
 }
 
@@ -53,14 +69,6 @@ int main(int argc, char* argv[]) {
     DSPState* dsp = initDSP();
 
     printHelp();
-
-    uint8_t brightness_p   = 100;
-    uint8_t sensitivity_p  = 50;
-    uint8_t speed_p        = 80;
-    int     patternLength  = 24;
-    int     tileOffset     = 2;
-    bool    rainbow        = false;
-    bool    normalizeBands = false;
 
     // LED state
     static CRGB leds[STRIP_COUNT][LEDS_PER_STRIP]{};
@@ -181,6 +189,7 @@ int main(int argc, char* argv[]) {
                         patternLength = std::max(5, patternLength - 1);
                         tileOffset = std::min(tileOffset, patternLength - 1);
                         printf("Pattern length: %d\n", patternLength);
+                        printf("Tile offset: %d\n", tileOffset);
                         break;
                     case SDLK_h:
                         printHelp();
@@ -204,7 +213,7 @@ int main(int argc, char* argv[]) {
             if (fileIdx + 1 >= fileCount) {
                 fileIdx = 0;
             }
-            if (!loadFile(fileIdx, 1)) {
+            if (!loadFile(fileIdx + 1, 1)) {
                 quit = true;
             }
             continue;
