@@ -16,9 +16,10 @@ import math
 import re
 import typing
 
-
 COUNT = 15
-RESISTOR_HEADER = '(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"'
+RESISTOR_HEADER = (
+    '(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"'
+)
 PIN_HEADER = '(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"'
 LED_HEADER = '(footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm"'
 
@@ -94,7 +95,9 @@ def sort_lines(lines: typing.List[str]) -> typing.List[str]:
     )
 
 
-def arrange_components(lines: typing.List[str], length: float, center_x: float, center_y: float)-> typing.Tuple[typing.List[str], bool]:
+def arrange_components(
+    lines: typing.List[str], length: float, center_x: float, center_y: float
+) -> typing.Tuple[typing.List[str], bool]:
     """Arrange the components."""
     PART_R = math.radians(360 / COUNT)
     hole_count = 0
@@ -119,7 +122,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
     iterator = iter(lines)
     line = None
 
-    def skip_lines(count: int, append: bool, assertion = None) -> typing.List[str]:
+    def skip_lines(count: int, append: bool, assertion=None) -> typing.List[str]:
         lines = []
         nonlocal line
         for _ in range(count):
@@ -137,7 +140,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
             # Mounting holes
             if line.strip() == '(footprint "MountingHole:MountingHole_3.2mm_M3"':
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
+                skip_lines(1, True, lambda l: l.strip().startswith('(layer "F.Cu")'))
                 skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r_spread = 4
@@ -170,7 +173,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
             # Resistors
             elif line.strip() == RESISTOR_HEADER:
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
+                skip_lines(1, True, lambda l: l.strip().startswith('(layer "F.Cu")'))
                 skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r = PART_R * (resistor_count + 1)
@@ -189,12 +192,16 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 # (property "Reference" "J7"
                 # If the J# is <= COUNT, then I know it's an LED
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
-                skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
+                skip_lines(
+                    1, True, lambda line: line.strip().startswith('(layer "F.Cu")')
+                )
+                skip_lines(1, True, lambda line: line.strip().startswith('(uuid "'))
                 temp_lines = skip_lines(4, False)
                 match = re.search(r'property "Reference" "J(\d+)"', temp_lines[-1])
                 if not match:
-                    raise ValueError(f"No J# reference found for pin header: {temp_lines[-1]}")
+                    raise ValueError(
+                        f"No J# reference found for pin header: {temp_lines[-1]}"
+                    )
                 number = int(match.groups()[0])
                 if number > COUNT:
                     new_lines += temp_lines
@@ -215,7 +222,7 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
             # LEDs
             elif line.strip() == LED_HEADER:
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith('(layer \"F.Cu\")'))
+                skip_lines(1, True, lambda l: l.strip().startswith('(layer "F.Cu")'))
                 skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
                 skip_lines(1, False, lambda l: l.strip().startswith("(at"))
                 angle_r = PART_R * (led_count + 1) + PART_R / 2
@@ -227,15 +234,18 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
                 led_count += 1
 
                 # We also need to find and rotate the pads
-                angle = 0
                 pad_count = 0
                 while pad_count < 4:
                     line = next(iterator)
                     if re.search(r'pad "(\d+)" smd rect', line):
                         new_lines.append(line)
                         pad_count += 1
-                        skip_lines(1, False, lambda l: l.strip().startswith("(at"))
-                        new_lines.append(line.replace(")", f" {int(clamp_d(angle_d + 90))})"))
+                        skip_lines(
+                            1, False, lambda line: line.strip().startswith("(at")
+                        )
+                        new_lines.append(
+                            line.replace(r"()?\d+)", f" {int(clamp_d(angle_d + 90))})")
+                        )
                     else:
                         new_lines.append(line)
             else:
@@ -243,7 +253,6 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
 
     except StopIteration:
         pass
-
 
     success = True
 
@@ -278,24 +287,47 @@ def arrange_components(lines: typing.List[str], length: float, center_x: float, 
         success = False
         print(message)
         print(f"Skipped {skipped_xy_line_count} xy lines")
-    
+
     return new_lines, success
 
 
 def main() -> None:
     """Main."""
     parser = argparse.ArgumentParser()
-    parser.add_argument("-l", "--length", type=float, required=True, help="The length from the center")
-    parser.add_argument("-x", "--center_x", type=float, required=True, help="The x coordinate of the center")
-    parser.add_argument("-y", "--center_y", type=float, required=True, help="The y coordinate of the center")
-    parser.add_argument("-o", "--output", type=str, required=False, help="The output file name")
+    parser.add_argument(
+        "-l", "--length", type=float, required=True, help="The length from the center"
+    )
+    parser.add_argument(
+        "-x",
+        "--center_x",
+        type=float,
+        required=True,
+        help="The x coordinate of the center",
+    )
+    parser.add_argument(
+        "-y",
+        "--center_y",
+        type=float,
+        required=True,
+        help="The y coordinate of the center",
+    )
+    parser.add_argument(
+        "-o", "--output", type=str, required=False, help="The output file name"
+    )
     args = parser.parse_args()
 
-    with open("piddle.kicad_pcb.backup", "r") as file:
-        lines = file.readlines()
-    
+    try:
+        with open("piddle.kicad_pcb.backup", "r") as file:
+            lines = file.readlines()
+    except FileNotFoundError as exc:
+        print(exc)
+        print("Copy piddle.kicad_pcb.backup to piddle.kicad_pcb.backup first")
+        raise exc
+
     lines = sort_lines(lines)
-    lines, success = arrange_components(lines, args.length, args.center_x, args.center_y)
+    lines, success = arrange_components(
+        lines, args.length, args.center_x, args.center_y
+    )
 
     output_file_name = args.output
     if success and not args.output:
