@@ -17,11 +17,9 @@ import re
 import typing
 
 COUNT = 15
-RESISTOR_HEADER = (
-    '(footprint "Resistor_THT:R_Axial_DIN0207_L6.3mm_D2.5mm_P10.16mm_Horizontal"'
-)
+RESISTOR_HEADER = '(footprint "PCM_JLCPCB:R_1206"'
 PIN_HEADER = '(footprint "Connector_PinHeader_2.54mm:PinHeader_1x03_P2.54mm_Vertical"'
-LED_HEADER = '(footprint "LED_SMD:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm"'
+LED_HEADER = '(footprint "PCM_JLCPCB:LED_WS2812B_PLCC4_5.0x5.0mm_P3.2mm"'
 
 
 def clamp_d(angle_d):
@@ -173,13 +171,16 @@ def arrange_components(
             # Resistors
             elif line.strip() == RESISTOR_HEADER:
                 new_lines.append(line)
-                skip_lines(1, True, lambda l: l.strip().startswith('(layer "F.Cu")'))
-                skip_lines(1, True, lambda l: l.strip().startswith('(uuid "'))
-                skip_lines(1, False, lambda l: l.strip().startswith("(at"))
+                skip_lines(
+                    1, True, lambda line: line.strip().startswith('(layer "F.Cu")')
+                )
+                skip_lines(1, True, lambda line: line.strip().startswith('(uuid "'))
+                skip_lines(1, False, lambda line: line.strip().startswith("(at"))
                 angle_r = PART_R * (resistor_count + 1)
-                resistor_length = length - 30
+                resistor_length = length - 28
                 x = math.sin(angle_r) * resistor_length + center_x
                 y = math.cos(angle_r) * resistor_length + center_y
+                print(f"{x=} {y=}")
                 angle_d = clamp_d(math.degrees(angle_r) + 90 + 180)
                 new_lines.append(f"    (at {x:0.4f} {y:0.4f} {int(angle_d)})\n")
                 resistor_count += 1

@@ -51,8 +51,10 @@ Special pins:
 // LEDs when it is active.
 constexpr int LED_PINS[] = {
   // Start at 12:00 then go clockwise
-  21, 19, 18, 5, 17, 16, 4, 2, 15,
-  // Past 6:00
+  21, 19, 18, 5, 17, 16, 4, 2,
+  // Past 6:00 on the PCB
+  15,
+  // Left side of the Arduino
   13, 12, 14, 27, 33, 32
 };
 const int STRIP_COUNT = COUNT_OF(LED_PINS);
