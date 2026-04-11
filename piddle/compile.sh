@@ -7,6 +7,7 @@ for arg in "$@"; do
     case "$arg" in
         -b) EXTRA_FLAGS="$EXTRA_FLAGS -DUSE_BLUETOOTH"; MODE_SET=1 ;;
         -a) EXTRA_FLAGS="$EXTRA_FLAGS -DUSE_ARTNET"; MODE_SET=1 ;;
+        --v2-1-pins) EXTRA_FLAGS="$EXTRA_FLAGS -DUSE_V2_1_PINS"; PIN=1 ;;
         *)  PASSTHROUGH="$PASSTHROUGH $arg" ;;
     esac
 done

@@ -50,11 +50,20 @@ Special pins:
 // Originally I was using pins 25 and 26, but WiFi uses either DAC1 or DAC2 and interferes with
 // LEDs when it is active.
 constexpr int LED_PINS[] = {
-  // Start at 12:00 then go clockwise
-  21, 19, 18, 5, 17, 16, 4, 2,
-  // Past 6:00 on the PCB
-  15,
-  // Left side of the Arduino
-  13, 12, 14, 27, 33, 32
+  #ifdef USE_V2_1_PINS // Pins from before I updated to avoid DAC1 and DAC2
+    // Start at 6:15 (D14) then go anti-clockwise
+    14, 27, 26, 25, 33, 32, 21,
+    // 12:00 D7
+    19, 18, 5, 17, 16, 4, 15,
+    // 11:45 D15
+    12
+  #else
+    // Start at 12:00 then go clockwise
+    21, 19, 18, 5, 17, 16, 4, 2,
+    // Past 6:00 on the PCB
+    15,
+    // Left side of the Arduino
+    13, 12, 14, 27, 33, 32
+  #endif
 };
 const int STRIP_COUNT = COUNT_OF(LED_PINS);

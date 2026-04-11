@@ -86,10 +86,10 @@ void setup() {
 
   configuration.brightnessSlider = 25;
   configuration.rainbowSwitch = false;
-  configuration.normalizeBandsSwitch = false;
+  configuration.normalizeBandsSwitch = true;
   configuration.speedSlider = 85;
   configuration.sensitivitySlider = 50;
-  configuration.patternLength = 20;
+  configuration.patternLength = 60;
   configuration.tileOffset = 0;
 
   xTaskCreatePinnedToCore(
