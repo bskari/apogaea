@@ -17,6 +17,10 @@
 #  define DOUBLE_ENDED 0
 #endif
 
+#ifndef SHOW_CONVERTER_LEDS
+#  define SHOW_CONVERTER_LEDS 0
+#endif
+
 static const int I2S_SAMPLE_RATE_HZ = 44100; // Sample rate of the I2S microphone
 static const int MAX_I2S_BUFFER_LENGTH = 512;
 
@@ -367,19 +371,23 @@ void displaySpectrumAnalyzer(
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
 
-  // The first LED in each strip is powered through a 1N4148 diode. Limit brightness so it stays
-  // under 50 mA. Once I disable the first LEDs (only needed for testing), this can be removed.
   CRGB firstLeds[STRIP_COUNT];
   for (int i = 0; i < STRIP_COUNT; ++i) {
     firstLeds[i] = leds[i][0];
   }
-  const int diodeBrightness = calculate_max_brightness_for_power_vmA(
-    firstLeds,
-    STRIP_COUNT,
-    255,
-    5,
-    50
-  );
+  #if SHOW_CONVERTER_LEDS
+    // The first LED in each strip is powered through a 1N4148 diode. Limit
+    // brightness so it stays under 50 mA.
+    const int diodeBrightness = calculate_max_brightness_for_power_vmA(
+      firstLeds,
+      STRIP_COUNT,
+      255,
+      5,
+      50
+    );
+  #else
+    const int diodeBrightness = 255;
+  #endif
   // My voltage converter can only output 10A, so limit to half of that
   const int max_ma = 5000;
   const int limitedBrightness = calculate_max_brightness_for_power_vmA(
@@ -391,9 +399,21 @@ void displaySpectrumAnalyzer(
   );
   driver.setBrightness(min(diodeBrightness, limitedBrightness));
 
+  #if ! SHOW_CONVERTER_LEDS
+    for (int i = 0; i < STRIP_COUNT; ++i) {
+      leds[i][0] = CRGB::Black;
+    }
+  #endif
+
   part_us = micros();
   driver.showPixels(NO_WAIT);
   const auto show_us = micros() - part_us;
+
+  #if ! SHOW_CONVERTER_LEDS
+    for (int i = 0; i < STRIP_COUNT; ++i) {
+      leds[i][0] = firstLeds[i];
+    }
+  #endif
 
   // The animations are too fast, so add an artificial delay
   const int delay_ms = 100 - speed_p;
