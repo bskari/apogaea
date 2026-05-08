@@ -51,6 +51,7 @@ Special pins:
 // LEDs when it is active.
 constexpr int LED_PINS[] = {
   #ifdef USE_V2_1_PINS // Pins from before I updated to avoid DAC1 and DAC2
+    #warning "Using V2.1 pins, conflicting with DAC and WiFi"
     // Start at 6:15 (D14) then go anti-clockwise
     14, 27, 26, 25, 33, 32, 21,
     // 12:00 D7
@@ -58,6 +59,7 @@ constexpr int LED_PINS[] = {
     // 11:45 D15
     12
   #else
+    #warning "Using V2.2 pins"
     // Start at 12:00 then go clockwise
     21, 19, 18, 5, 17, 16, 4, 2,
     // Past 6:00 on the PCB

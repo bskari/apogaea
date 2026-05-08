@@ -74,7 +74,6 @@ static float windowingMultiplier(const int offset);
 static void powerOfTwo(float* const array, const int length);
 static constexpr float square(const float f);
 
-
 static void computeFft() {
   // Windowing
   for (int i = 0; i < COUNT_OF(input); ++i) {
@@ -371,11 +370,8 @@ void displaySpectrumAnalyzer(
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
 
-  CRGB firstLeds[STRIP_COUNT];
-  for (int i = 0; i < STRIP_COUNT; ++i) {
-    firstLeds[i] = leds[i][0];
-  }
   #if SHOW_CONVERTER_LEDS
+    #warning "Showing converter LEDs"
     // The first LED in each strip is powered through a 1N4148 diode. Limit
     // brightness so it stays under 50 mA.
     const int diodeBrightness = calculate_max_brightness_for_power_vmA(
@@ -400,6 +396,7 @@ void displaySpectrumAnalyzer(
   driver.setBrightness(min(diodeBrightness, limitedBrightness));
 
   #if ! SHOW_CONVERTER_LEDS
+    #warning "Hiding converter LEDs"
     for (int i = 0; i < STRIP_COUNT; ++i) {
       leds[i][0] = CRGB::Black;
     }
@@ -408,12 +405,6 @@ void displaySpectrumAnalyzer(
   part_us = micros();
   driver.showPixels(NO_WAIT);
   const auto show_us = micros() - part_us;
-
-  #if ! SHOW_CONVERTER_LEDS
-    for (int i = 0; i < STRIP_COUNT; ++i) {
-      leds[i][0] = firstLeds[i];
-    }
-  #endif
 
   // The animations are too fast, so add an artificial delay
   const int delay_ms = 100 - speed_p;
@@ -458,7 +449,12 @@ void displaySpectrumAnalyzer(
 
 static void slideDown(const int count) {
   const int byteCount = (LEDS_PER_STRIP - count) * sizeof(patternBuffer[0][0]);
-  for (int i = 0; i < STRIP_COUNT; ++i) {
+  #if SHOW_CONVERTER_LEDS
+    const int start = 0;
+  #else
+    const int start = 1;
+  #endif
+  for (int i = start; i < STRIP_COUNT; ++i) {
     memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
   }
 }

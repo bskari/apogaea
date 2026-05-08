@@ -89,7 +89,7 @@ void setup() {
   configuration.normalizeBandsSwitch = true;
   configuration.speedSlider = 85;
   configuration.sensitivitySlider = 50;
-  configuration.patternLength = 60;
+  configuration.patternLength = 70;
   configuration.tileOffset = 0;
 
   xTaskCreatePinnedToCore(
