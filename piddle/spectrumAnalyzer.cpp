@@ -449,12 +449,7 @@ void displaySpectrumAnalyzer(
 
 static void slideDown(const int count) {
   const int byteCount = (LEDS_PER_STRIP - count) * sizeof(patternBuffer[0][0]);
-  #if SHOW_CONVERTER_LEDS
-    const int start = 0;
-  #else
-    const int start = 1;
-  #endif
-  for (int i = start; i < STRIP_COUNT; ++i) {
+  for (int i = 0; i < STRIP_COUNT; ++i) {
     memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
   }
 }

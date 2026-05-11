@@ -87,8 +87,8 @@ void setup() {
   configuration.brightnessSlider = 25;
   configuration.rainbowSwitch = false;
   configuration.normalizeBandsSwitch = true;
-  configuration.speedSlider = 85;
-  configuration.sensitivitySlider = 50;
+  configuration.speedSlider = 60;
+  configuration.sensitivitySlider = 20;
   configuration.patternLength = 70;
   configuration.tileOffset = 0;
 
@@ -147,7 +147,6 @@ void loop() {
         // First time: start WiFi and ArtNet receiver task (blocks up to 10s)
         setupArtnet();
         artnetStarted = true;
-        artnetEnabled = true;
       } else {
         artnetEnabled = !artnetEnabled;
         Serial.printf("ArtNet mode %s\n", artnetEnabled ? "enabled" : "disabled");
