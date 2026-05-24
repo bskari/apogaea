@@ -17,6 +17,7 @@
 #  define DOUBLE_ENDED 0
 #endif
 
+#define SHOW_CONVERTER_LEDS 1
 #ifndef SHOW_CONVERTER_LEDS
 #  define SHOW_CONVERTER_LEDS 0
 #endif
@@ -61,6 +62,7 @@ extern I2SClocklessLedDriver driver;
 extern bool logDebug;
 
 static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
+static unsigned char brightness = 64;
 
 static void computeFft();
 static void renderFft(bool rainbow, bool normalizeBands, int patternLength, int tileOffset);
@@ -90,7 +92,7 @@ static void computeFft() {
 
   powerOfTwo(output, COUNT_OF(output));
 
-#if false
+#if 0
   // Debug logging
   const int interval_ms = 5000;
   static decltype(millis()) nextDisplayTime_ms = interval_ms;
@@ -122,6 +124,9 @@ static void renderFft(const bool rainbow, const bool normalizeBands, const int p
     logNotes(noteValues);
     const auto unscaledMw = calculate_unscaled_power_mW(reinterpret_cast<CRGB*>(leds), LEDS_PER_STRIP * STRIP_COUNT);
     Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) if at max brightness\n", unscaledMw, unscaledMw / 5, unscaledMw / 12);
+    const auto scaledMw = unscaledMw * brightness / 255;
+    const int brightness_p = brightness * 100 / 255;
+    Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) at %d%% brightness\n", scaledMw, scaledMw / 5, scaledMw / 12, brightness_p);
     logDebug = false;
   }
 
@@ -372,15 +377,19 @@ void displaySpectrumAnalyzer(
 
   #if SHOW_CONVERTER_LEDS
     #warning "Showing converter LEDs"
+    CRGB firstLeds[STRIP_COUNT];
+    for (int i = 0; i < STRIP_COUNT; ++i) {
+      firstLeds[i] = leds[i][0];
+    };
     // The first LED in each strip is powered through a 1N4148 diode. Limit
     // brightness so it stays under 50 mA.
-    const int diodeBrightness = calculate_max_brightness_for_power_vmA(
+    const int diodeBrightness = min(calculate_max_brightness_for_power_vmA(
       firstLeds,
       STRIP_COUNT,
       255,
       5,
       50
-    );
+    ), static_cast<unsigned char>(32));
   #else
     const int diodeBrightness = 255;
   #endif
@@ -393,7 +402,8 @@ void displaySpectrumAnalyzer(
     12,
     max_ma
   );
-  driver.setBrightness(min(diodeBrightness, limitedBrightness));
+  brightness = min(diodeBrightness, limitedBrightness);
+  driver.setBrightness(brightness);
 
   #if ! SHOW_CONVERTER_LEDS
     #warning "Hiding converter LEDs"
@@ -411,39 +421,41 @@ void displaySpectrumAnalyzer(
   delay(delay_ms);
 
   ++loopCount;
-  if (millis() > next_ms) {
-    Serial.printf("%f FPS with %dms delay\n", static_cast<double>(loopCount) * 1000 / logTime_ms, delay_ms);
-    Serial.printf(
-      "samples_us:%lu compute_us:%lu render_us:%lu show_us:%lu\n",
-      samples_us,
-      compute_us,
-      render_us,
-      show_us
-    );
-
-    #if SHOW_VOLTAGE
-      const float R1 = 10000.0f;
-      const float R2 = 5100.0f;
-      const float referenceVoltage = 3.3f;
-      const float maxReading = 4095;
-      int adcReading = analogRead(VOLTAGE_PIN);
-      const float adcVoltage = static_cast<float>(adcReading) / maxReading * referenceVoltage;
-      const float voltage = adcVoltage * (R1 + R2) / R2;
+  #if 0
+    if (millis() > next_ms) {
+      Serial.printf("%f FPS with %dms delay\n", static_cast<double>(loopCount) * 1000 / logTime_ms, delay_ms);
       Serial.printf(
-        "Voltage:%0.2f (adc:%d adcV:%0.2f)\n",
-        voltage,
-        adcReading,
-        adcVoltage);
-      char buffer[6];
-      snprintf(buffer, 6, "%0.2f", voltage);
-      voltageOnes = buffer[0] - '0';
-      voltageTenths = buffer[2] - '0';
-      voltageHundredths = buffer[3] - '0';
-    #endif
+        "samples_us:%lu compute_us:%lu render_us:%lu show_us:%lu\n",
+        samples_us,
+        compute_us,
+        render_us,
+        show_us
+      );
 
-    next_ms = millis() + logTime_ms;
-    loopCount = 0;
-  }
+      #if SHOW_VOLTAGE
+        const float R1 = 10000.0f;
+        const float R2 = 5100.0f;
+        const float referenceVoltage = 3.3f;
+        const float maxReading = 4095;
+        int adcReading = analogRead(VOLTAGE_PIN);
+        const float adcVoltage = static_cast<float>(adcReading) / maxReading * referenceVoltage;
+        const float voltage = adcVoltage * (R1 + R2) / R2;
+        Serial.printf(
+          "Voltage:%0.2f (adc:%d adcV:%0.2f)\n",
+          voltage,
+          adcReading,
+          adcVoltage);
+        char buffer[6];
+        snprintf(buffer, 6, "%0.2f", voltage);
+        voltageOnes = buffer[0] - '0';
+        voltageTenths = buffer[2] - '0';
+        voltageHundredths = buffer[3] - '0';
+      #endif
+
+      next_ms = millis() + logTime_ms;
+      loopCount = 0;
+    }
+  #endif
 
 }
 

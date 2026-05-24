@@ -2,16 +2,10 @@
 #define BLUETOOTH_AUDIO_HPP
 
 #include "constants.hpp"
-
-#ifdef USE_BLUETOOTH
-
 #include <freertos/FreeRTOS.h>
 #include <freertos/task.h>
 
-// Start the A2DP Bluetooth sink with the given device name.
-// collectSamplesTask is suspended when a source connects and resumed on disconnect.
 void setupBluetoothAudio(TaskHandle_t collectSamplesTask, const char* deviceName);
 void teardownBluetoothAudio();
 
-#endif // USE_BLUETOOTH
 #endif // BLUETOOTH_AUDIO_HPP

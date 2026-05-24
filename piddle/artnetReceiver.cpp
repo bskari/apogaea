@@ -1,23 +1,16 @@
 #include "artnetReceiver.hpp"
-#ifdef USE_ARTNET
-
-#include "bluetoothAudio.hpp"
-#include "secrets.hpp"
 
 #include <string.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
-#include <ESPmDNS.h>
 
 #define ARTNET_PORT           6454
-#define ARTNET_TIMEOUT_MS     5000
+#define ARTNET_TIMEOUT_MS     2 * 60 * 1000
 #define ARTNET_UNIVERSE_OFFSET   0   // Strip 0 = universe 0
 
-volatile bool artnetActive  = false;
-volatile bool artnetEnabled = false;
-volatile bool artnetWifiShutdownNeeded = false;
+volatile bool artnetActive = false;
 
-CRGB artnetPixels[STRIP_COUNT][LEDS_PER_STRIP];
+CRGB* artnetPixels = nullptr;
 
 static WiFiUDP udp;
 static volatile uint32_t lastPacketMs = 0;
@@ -34,30 +27,12 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 // ---------------------------------------------------------------------------
 
 void setupArtnet() {
-  Serial.printf("ArtNet: connecting to WiFi '%s'...\n", WIFI_SSID);
-  WiFi.mode(WIFI_STA);
-  WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
-
-  uint32_t start = millis();
-  while (WiFi.status() != WL_CONNECTED && millis() - start < 10000) {
-    delay(250);
-    Serial.print(".");
-  }
-  Serial.println();
-
-  if (WiFi.status() != WL_CONNECTED) {
-    Serial.println("ArtNet: WiFi connection failed");
-    return;
-  }
-
-  Serial.printf("ArtNet: connected, IP %s\n", WiFi.localIP().toString().c_str());
-
-  if (MDNS.begin("piddle")) {
-    Serial.println("ArtNet: mDNS piddle.local registered");
-  }
+  Serial.printf("%ud: ArtNet: starting WiFi AP 'Phonic Bloom ArtNet'...\n", millis());
+  WiFi.softAP("Phonic Bloom ArtNet");
+  Serial.printf("%ud: ArtNet: AP IP %s\n", millis(), WiFi.softAPIP().toString().c_str());
 
   udp.begin(ARTNET_PORT);
-  Serial.printf("ArtNet: listening on UDP port %d\n", ARTNET_PORT);
+  Serial.printf("%ud: ArtNet: listening on UDP port %d\n", millis(), ARTNET_PORT);
 
   xTaskCreatePinnedToCore(
     artnetReceiverFunction,
@@ -80,11 +55,9 @@ void artnetReceiverFunction(void*) {
     int pktLen = udp.parsePacket();
 
     if (pktLen <= 0) {
-      // Nothing arrived - check timeout and yield to display task
       if (artnetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
         artnetActive = false;
-        artnetWifiShutdownNeeded = true;
-        Serial.println("ArtNet: signal lost, reverting to audio mode");
+        Serial.println("ArtNet: signal lost, falling back to audio");
       }
       vTaskDelay(1 / portTICK_PERIOD_MS);
       continue;
@@ -103,7 +76,7 @@ void artnetReceiverFunction(void*) {
       lastPacketMs = millis();
       if (!artnetActive) {
         artnetActive = true;
-        Serial.println("ArtNet: receiving, switched to ArtNet mode");
+        Serial.println("ArtNet: receiving");
       }
     } else if (opcode == 0x2000) {
       // ArtPoll - reply once per group of 4 universes using BindIndex
@@ -141,9 +114,9 @@ static void handleArtDmx(const uint8_t* buf, int len) {
   int pixels = min((int)(dmxLen / 3), (int)LEDS_PER_STRIP);
 
   for (int i = 0; i < pixels; i++) {
-    artnetPixels[strip][i].r = dmx[i * 3 + 0];
-    artnetPixels[strip][i].g = dmx[i * 3 + 1];
-    artnetPixels[strip][i].b = dmx[i * 3 + 2];
+    artnetPixels[strip * LEDS_PER_STRIP + i].r = dmx[i * 3 + 0];
+    artnetPixels[strip * LEDS_PER_STRIP + i].g = dmx[i * 3 + 1];
+    artnetPixels[strip * LEDS_PER_STRIP + i].b = dmx[i * 3 + 2];
   }
 }
 
@@ -153,7 +126,7 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   uint8_t reply[239];
   memset(reply, 0, sizeof(reply));
 
-  IPAddress ip = WiFi.localIP();
+  IPAddress ip = WiFi.softAPIP();
   uint8_t mac[6];
   WiFi.macAddress(mac);
 
@@ -176,8 +149,8 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   reply[23] = 0xD2;                             // Status1: indicators normal
 
   // Node names
-  strncpy((char*)reply + 26, "Phonic Bloom",             17); // ShortName (18 bytes)
-  strncpy((char*)reply + 44, "Piddle ArtNet Controller", 63); // LongName (64 bytes)
+  strncpy((char*)reply + 26, "Phonic Bloom", 17); // ShortName (18 bytes)
+  strncpy((char*)reply + 44, "Phonic ArtNet Controller", 63); // LongName (64 bytes)
   snprintf((char*)reply + 108, 64, "#0001 [%04d] OK", bindIndex); // NodeReport
 
   // Ports
@@ -203,13 +176,3 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   udp.write(reply, sizeof(reply));
   udp.endPacket();
 }
-
-void teardownArtnet() {
-  artnetWifiShutdownNeeded = false;
-  udp.stop();
-  WiFi.disconnect(true);
-  WiFi.mode(WIFI_OFF);
-  Serial.println("ArtNet: WiFi shut down");
-}
-
-#endif // USE_ARTNET
