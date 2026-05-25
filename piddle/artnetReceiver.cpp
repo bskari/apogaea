@@ -27,12 +27,12 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 // ---------------------------------------------------------------------------
 
 void setupArtnet() {
-  Serial.printf("%ud: ArtNet: starting WiFi AP 'Phonic Bloom ArtNet'...\n", millis());
+  Serial.printf("%lu: ArtNet: starting WiFi AP 'Phonic Bloom ArtNet'...\n", millis());
   WiFi.softAP("Phonic Bloom ArtNet");
-  Serial.printf("%ud: ArtNet: AP IP %s\n", millis(), WiFi.softAPIP().toString().c_str());
+  Serial.printf("%lu: ArtNet: AP IP %s\n", millis(), WiFi.softAPIP().toString().c_str());
 
   udp.begin(ARTNET_PORT);
-  Serial.printf("%ud: ArtNet: listening on UDP port %d\n", millis(), ARTNET_PORT);
+  Serial.printf("%lu: ArtNet: listening on UDP port %d\n", millis(), ARTNET_PORT);
 
   xTaskCreatePinnedToCore(
     artnetReceiverFunction,
@@ -57,7 +57,7 @@ void artnetReceiverFunction(void*) {
     if (pktLen <= 0) {
       if (artnetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
         artnetActive = false;
-        Serial.println("ArtNet: signal lost, falling back to audio");
+        Serial.printf("%lu: ArtNet: signal lost, falling back to audio\n", millis());
       }
       vTaskDelay(1 / portTICK_PERIOD_MS);
       continue;
