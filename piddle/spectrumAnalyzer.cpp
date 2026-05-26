@@ -17,6 +17,10 @@
 #  define DOUBLE_ENDED 0
 #endif
 
+#ifndef LOG_TIMING
+#  define LOG_TIMING 0
+#endif
+
 #define SHOW_CONVERTER_LEDS 1
 #ifndef SHOW_CONVERTER_LEDS
 #  define SHOW_CONVERTER_LEDS 0
@@ -92,7 +96,7 @@ static void computeFft() {
 
   powerOfTwo(output, COUNT_OF(output));
 
-#if 0
+#if LOG_TIMING
   // Debug logging
   const int interval_ms = 5000;
   static decltype(millis()) nextDisplayTime_ms = interval_ms;
@@ -300,14 +304,18 @@ void displaySpectrumAnalyzer(
   const int patternLength,
   const int tileOffset
 ) {
-  const decltype(millis()) logTime_ms = 5000;
-  static auto next_ms = 1000;
-  static int loopCount = 0;
+  #if LOG_TIMING
+    const decltype(millis()) logTime_ms = 5000;
+    static auto next_ms = 1000;
+    static int loopCount = 0;
+  #endif
   #if SHOW_VOLTAGE
     static int voltageOnes = 4, voltageTenths = 7, voltageHundredths = 1;
   #endif
 
-  auto part_us = micros();
+  #if LOG_TIMING
+    auto part_us = micros();
+  #endif
   // First we need to copy the data from the samples circular buffer
   // We can't use memcpy because we're converting uint16_t to float
   // Also, these are supposed to be coming in as int16_t, but looks like they're coming in as unsigned?
@@ -354,9 +362,11 @@ void displaySpectrumAnalyzer(
     }
     Serial.println();
   }
-  const auto samples_us = micros() - part_us;
+  #if LOG_TIMING
+    const auto samples_us = micros() - part_us;
+    part_us = micros();
+  #endif
 
-  part_us = micros();
   computeFft();
   // Bass lines have more energy than higher samples, so reduce them
   for (int i = 0; i < COUNT_OF(output); ++i) {
@@ -367,11 +377,15 @@ void displaySpectrumAnalyzer(
   // 50% = 4000
   const float minimumDivisor = square((130 - sensitivity_p) * 50);
   normalizeTo0_1(output, SAMPLE_COUNT, minimumDivisor);
-  const auto compute_us = micros() - part_us;
+  #if LOG_TIMING
+    const auto compute_us = micros() - part_us;
+    part_us = micros();
+  #endif
 
-  part_us = micros();
   renderFft(rainbow, normalizeBands, patternLength, tileOffset);
-  const auto render_us = micros() - part_us;
+  #if LOG_TIMING
+    const auto render_us = micros() - part_us;
+  #endif
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
 
@@ -412,16 +426,20 @@ void displaySpectrumAnalyzer(
     }
   #endif
 
-  part_us = micros();
+  #if LOG_TIMING
+    part_us = micros();
+  #endif
   driver.showPixels(NO_WAIT);
-  const auto show_us = micros() - part_us;
+  #if LOG_TIMING
+    const auto show_us = micros() - part_us;
+  #endif
 
   // The animations are too fast, so add an artificial delay
   const int delay_ms = 100 - speed_p;
   delay(delay_ms);
 
-  ++loopCount;
-  #if 0
+  #if LOG_TIMING
+    ++loopCount;
     if (millis() > next_ms) {
       Serial.printf("%f FPS with %dms delay\n", static_cast<double>(loopCount) * 1000 / logTime_ms, delay_ms);
       Serial.printf(
