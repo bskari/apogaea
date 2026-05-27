@@ -27,12 +27,12 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 // ---------------------------------------------------------------------------
 
 void setupArtnet() {
-  Serial.printf("%lu: ArtNet: starting WiFi AP 'Phonic Bloom ArtNet'...\n", millis());
+  Serial.printf("%lu.%lu: ArtNet: starting WiFi AP 'Phonic Bloom ArtNet'...\n", millis() / 1000, millis() % 1000);
   WiFi.softAP("Phonic Bloom ArtNet");
-  Serial.printf("%lu: ArtNet: AP IP %s\n", millis(), WiFi.softAPIP().toString().c_str());
+  Serial.printf("%lu.%lu: ArtNet: AP IP %s\n", millis() / 1000, millis() % 1000, WiFi.softAPIP().toString().c_str());
 
   udp.begin(ARTNET_PORT);
-  Serial.printf("%lu: ArtNet: listening on UDP port %d\n", millis(), ARTNET_PORT);
+  Serial.printf("%lu.%lu: ArtNet: listening on UDP port %d\n", millis() / 1000, millis() % 1000, ARTNET_PORT);
 
   xTaskCreatePinnedToCore(
     artnetReceiverFunction,
@@ -57,7 +57,7 @@ void artnetReceiverFunction(void*) {
     if (pktLen <= 0) {
       if (artnetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
         artnetActive = false;
-        Serial.printf("%lu: ArtNet: signal lost, falling back to audio\n", millis());
+        Serial.printf("%lu.%lu: ArtNet: signal lost, falling back to audio\n", millis() / 1000, millis() % 1000);
       }
       vTaskDelay(1 / portTICK_PERIOD_MS);
       continue;
@@ -81,6 +81,7 @@ void artnetReceiverFunction(void*) {
     } else if (opcode == 0x2000) {
       // ArtPoll - reply once per group of 4 universes using BindIndex
       IPAddress src = udp.remoteIP();
+      Serial.printf("%lu.%lu: ArtNet: replying to ArtPoll from %s (%lu)\n", millis() / 1000, millis() % 1000, src.toString().c_str(), static_cast<uint32_t>(src));
       sendArtPollReply(src, 1,  0, 4);
       sendArtPollReply(src, 2,  4, 4);
       sendArtPollReply(src, 3,  8, 4);
@@ -111,7 +112,7 @@ static void handleArtDmx(const uint8_t* buf, int len) {
   if (len < 18 + (int)dmxLen) return;
 
   const uint8_t* dmx = buf + 18;
-  int pixels = min((int)(dmxLen / 3), (int)LEDS_PER_STRIP);
+  const int pixels = min((int)(dmxLen / 3), (int)LEDS_PER_STRIP);
 
   for (int i = 0; i < pixels; i++) {
     artnetPixels[strip * LEDS_PER_STRIP + i].r = dmx[i * 3 + 0];
