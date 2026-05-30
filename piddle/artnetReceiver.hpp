@@ -2,9 +2,12 @@
 
 #include "constants.hpp"
 #include <FastLED.h>
+#include <freertos/semphr.h>
 
-// Start the WiFi AP and ArtNet receiver task. Call from loop() after tearing down Bluetooth.
-void setupArtnet();
+// Connect to WiFi and start the ArtNet receiver task. Call from loop() after tearing down Bluetooth.
+// collectSamplesTask must already be suspended before calling. On ArtNet timeout, the receiver
+// task resumes collectSamplesTask, clears *artnetMode, and deletes itself.
+void setupArtnet(TaskHandle_t collectSamplesTask, volatile bool* artnetMode);
 
 // FreeRTOS task - do not call directly.
 void artnetReceiverFunction(void*);
@@ -15,3 +18,6 @@ extern volatile bool artnetActive;
 // Most recent pixel data received from ArtNet, row-major: index as [strip * LEDS_PER_STRIP + led].
 // Strip N corresponds to ArtNet universe N. Allocated by setupArtnet().
 extern CRGB* artnetPixels;
+
+// Mutex that must be held while reading or writing artnetPixels.
+extern SemaphoreHandle_t artnetPixelsMutex;

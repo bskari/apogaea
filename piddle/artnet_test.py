@@ -128,6 +128,7 @@ def main():
 
             u = strip_to_universe(active)
             print(f"Strip {active:2d} (universe 0x{u:04X})", end='\r')
+            print(time.time())
             active = (active + 1) % STRIP_COUNT
             time.sleep(delay)
     except KeyboardInterrupt:

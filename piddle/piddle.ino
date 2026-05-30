@@ -133,14 +133,16 @@ void loop() {
     delay(500);
     artnetPixels = reinterpret_cast<CRGB*>(leds);
 
+    vTaskSuspend(collectSamplesTask);
+
     // Suspend the display task and push black to all strips before WiFi init.
-    // WiFi can drive pin 2 (which is also an LED output) during softAP startup,
+    // WiFi can drive pin 2 (which is also an LED output) during station connect,
     // causing the WS2812B on that strip to latch a white frame.
     vTaskSuspend(displayLedsTask);
     memset(leds, 0, sizeof(leds));
     driver.showPixels(WAIT);
 
-    setupArtnet();
+    setupArtnet(collectSamplesTask, &artnetMode);
 
     // Clear again after WiFi init in case any strip latched interference during init.
     memset(leds, 0, sizeof(leds));
@@ -152,7 +154,16 @@ void loop() {
 
   RadioConfigMessage_t radioMsg;
   if (pollRadioReceiver(radioMsg)) {
-    Serial.println("Received message");
+    Serial.printf(
+      "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x\n",
+      radioMsg.brightness,
+      radioMsg.sensitivity,
+      radioMsg.speed,
+      radioMsg.rainbow,
+      radioMsg.normalizeBands,
+      radioMsg.rgbButton,
+      radioMsg.rgb
+    );
     portENTER_CRITICAL(&configMux);
     configuration.brightnessSlider = radioMsg.brightness;
     configuration.sensitivitySlider = radioMsg.sensitivity;
@@ -173,14 +184,20 @@ void collectSamplesFunction(void*) {
 
 void displayLedsFunction(void*) {
   while (1) {
-    if (artnetMode && artnetActive) {
-      // ArtNet receiver writes directly into leds (artnetPixels points at leds)
-      driver.showPixels(NO_WAIT);
+    if (artnetMode) {
+      if (artnetActive) {
+        // ArtNet receiver writes directly into leds (artnetPixels points at leds)
+        while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
+          vTaskDelay(1 / portTICK_PERIOD_MS);
+        }
+        driver.showPixels();
+        xSemaphoreGive(artnetPixelsMutex);
+      }
       delay(25); // ~40 fps
       continue;
     }
 
-    // Audio-reactive mode (default, and fallback when no ArtNet signal)
+    // Audio-reactive mode (default, and resumed after ArtNet timeout)
     for (int i = 0; i < 100; ++i) {
       displaySpectrumAnalyzer(
         configuration.brightnessSlider,

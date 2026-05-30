@@ -1,4 +1,5 @@
 #include "artnetReceiver.hpp"
+#include "secrets.hpp"
 
 #include <string.h>
 #include <WiFi.h>
@@ -11,9 +12,12 @@
 volatile bool artnetActive = false;
 
 CRGB* artnetPixels = nullptr;
+SemaphoreHandle_t artnetPixelsMutex = nullptr;
 
 static WiFiUDP udp;
 static volatile uint32_t lastPacketMs = 0;
+static TaskHandle_t collectSamplesTaskHandle = nullptr;
+static volatile bool* artnetModePtr = nullptr;
 
 // ---------------------------------------------------------------------------
 // Forward declarations
@@ -26,11 +30,14 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 // Public API
 // ---------------------------------------------------------------------------
 
-void setupArtnet() {
-  Serial.printf("%lu.%lu: ArtNet: starting WiFi AP 'Phonic Bloom ArtNet'...\n", millis() / 1000, millis() % 1000);
-  WiFi.softAP("Phonic Bloom ArtNet");
-  Serial.printf("%lu.%lu: ArtNet: AP IP %s\n", millis() / 1000, millis() % 1000, WiFi.softAPIP().toString().c_str());
+void setupArtnet(TaskHandle_t collectSamplesTask, volatile bool* artnetMode) {
+  collectSamplesTaskHandle = collectSamplesTask;
+  artnetModePtr = artnetMode;
+  Serial.printf("%lu.%lu: ArtNet: starting AP '%s'...\n", millis() / 1000, millis() % 1000, WIFI_SSID);
+  WiFi.softAP("Phonic Bloom Artnet");
+  Serial.printf("%lu.%lu: ArtNet: AP up, IP %s\n", millis() / 1000, millis() % 1000, WiFi.softAPIP().toString().c_str());
 
+  artnetPixelsMutex = xSemaphoreCreateMutex();
   udp.begin(ARTNET_PORT);
   Serial.printf("%lu.%lu: ArtNet: listening on UDP port %d\n", millis() / 1000, millis() % 1000, ARTNET_PORT);
 
@@ -41,7 +48,7 @@ void setupArtnet() {
     nullptr,
     2,       // Priority - higher than display task (1) so packets are never dropped
     nullptr,
-    0);      // Core 0, alongside display task
+    1);      // Core 1, opposite of display task
 }
 
 // ---------------------------------------------------------------------------
@@ -56,8 +63,11 @@ void artnetReceiverFunction(void*) {
 
     if (pktLen <= 0) {
       if (artnetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
+        Serial.printf("%lu.%lu: ArtNet: signal lost, resuming audio\n", millis() / 1000, millis() % 1000);
         artnetActive = false;
-        Serial.printf("%lu.%lu: ArtNet: signal lost, falling back to audio\n", millis() / 1000, millis() % 1000);
+        vTaskResume(collectSamplesTaskHandle);
+        *artnetModePtr = false;
+        vTaskDelete(NULL);
       }
       vTaskDelay(1 / portTICK_PERIOD_MS);
       continue;
@@ -66,7 +76,10 @@ void artnetReceiverFunction(void*) {
     int readLen = udp.read(buf, sizeof(buf));
 
     // Validate Art-Net ID header
-    if (readLen < 10 || memcmp(buf, "Art-Net\0", 8) != 0) continue;
+    if (readLen < 10 || memcmp(buf, "Art-Net\0", 8) != 0) {
+      Serial.printf("%lu: Received non-ArtNet packet\n", millis());
+      continue;
+    }
 
     uint16_t opcode = (uint16_t)buf[8] | ((uint16_t)buf[9] << 8);
 
@@ -114,11 +127,13 @@ static void handleArtDmx(const uint8_t* buf, int len) {
   const uint8_t* dmx = buf + 18;
   const int pixels = min((int)(dmxLen / 3), (int)LEDS_PER_STRIP);
 
+  xSemaphoreTake(artnetPixelsMutex, portMAX_DELAY);
   for (int i = 0; i < pixels; i++) {
     artnetPixels[strip * LEDS_PER_STRIP + i].r = dmx[i * 3 + 0];
     artnetPixels[strip * LEDS_PER_STRIP + i].g = dmx[i * 3 + 1];
     artnetPixels[strip * LEDS_PER_STRIP + i].b = dmx[i * 3 + 2];
   }
+  xSemaphoreGive(artnetPixelsMutex);
 }
 
 static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
@@ -129,7 +144,7 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 
   IPAddress ip = WiFi.softAPIP();
   uint8_t mac[6];
-  WiFi.macAddress(mac);
+  WiFi.softAPmacAddress(mac);
 
   // Header
   memcpy(reply + 0, "Art-Net\0", 8);
