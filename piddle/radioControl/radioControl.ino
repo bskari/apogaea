@@ -125,8 +125,8 @@ void setup() {
   RemoteXY.normalizeBandsSwitch = true;
   RemoteXY.speedSlider = DEFAULT_SPEED;
   RemoteXY.sensitivitySlider = DEFAULT_SENSITIVITY;
-  RemoteXY.patternLength = DEFAULT_PATTERN_LENGTH;
-  RemoteXY.tileOffset = DEFAULT_TILE_OFFSET;
+  //RemoteXY.patternLength = DEFAULT_PATTERN_LENGTH;
+  //RemoteXY.tileOffset = DEFAULT_TILE_OFFSET;
 }
 
 void sendRadioUpdate();

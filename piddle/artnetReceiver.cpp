@@ -33,8 +33,9 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 void setupArtnet(TaskHandle_t collectSamplesTask, volatile bool* artnetMode) {
   collectSamplesTaskHandle = collectSamplesTask;
   artnetModePtr = artnetMode;
-  Serial.printf("%lu.%lu: ArtNet: starting AP '%s'...\n", millis() / 1000, millis() % 1000, WIFI_SSID);
-  WiFi.softAP("Phonic Bloom Artnet");
+  const char* const ssid = "Phonic Bloom Artnet";
+  Serial.printf("%lu.%lu: ArtNet: starting AP '%s'...\n", millis() / 1000, millis() % 1000, ssid);
+  WiFi.softAP(ssid);
   Serial.printf("%lu.%lu: ArtNet: AP up, IP %s\n", millis() / 1000, millis() % 1000, WiFi.softAPIP().toString().c_str());
 
   artnetPixelsMutex = xSemaphoreCreateMutex();
