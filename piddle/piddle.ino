@@ -76,13 +76,13 @@ void setup() {
   pinMode(0, INPUT);
   attachInterrupt(0, buttonInterrupt, CHANGE);
 
-  configuration.brightnessSlider = 25;
+  configuration.brightnessSlider = DEFAULT_BRIGHTNESS;
   configuration.rainbowSwitch = false;
   configuration.normalizeBandsSwitch = true;
-  configuration.speedSlider = 60;
-  configuration.sensitivitySlider = 20;
-  configuration.patternLength = 70;
-  configuration.tileOffset = 0;
+  configuration.speedSlider = DEFAULT_SPEED;
+  configuration.sensitivitySlider = DEFAULT_SENSITIVITY;
+  configuration.patternLength = DEFAULT_PATTERN_LENGTH;
+  configuration.tileOffset = DEFAULT_TILE_OFFSET;
 
   xTaskCreatePinnedToCore(
     collectSamplesFunction,

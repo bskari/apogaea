@@ -69,3 +69,9 @@ constexpr int LED_PINS[] = {
   #endif
 };
 const int STRIP_COUNT = COUNT_OF(LED_PINS);
+
+const int DEFAULT_BRIGHTNESS = 25;
+const int DEFAULT_SPEED = 60;
+const int DEFAULT_SENSITIVITY = 25;
+const int DEFAULT_PATTERN_LENGTH = 70;
+const int DEFAULT_TILE_OFFSET = 0;
