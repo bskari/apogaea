@@ -18,6 +18,8 @@ struct {
   int8_t speedSlider; // from 0 to 100
   uint8_t rainbowSwitch; // =1 if switch ON and =0 if OFF
   uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF
+  uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
+  uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or GRB
   uint8_t patternLength; // number of LEDs per repeating tile (5..LEDS_PER_STRIP)
   uint8_t tileOffset;   // how many history positions each successive tile shifts (0 = identical copies)
 } configuration;
@@ -81,6 +83,8 @@ void setup() {
   configuration.normalizeBandsSwitch = true;
   configuration.speedSlider = DEFAULT_SPEED;
   configuration.sensitivitySlider = DEFAULT_SENSITIVITY;
+  configuration.rgbButton = 0;
+  configuration.rgb = 0;
   configuration.patternLength = DEFAULT_PATTERN_LENGTH;
   configuration.tileOffset = DEFAULT_TILE_OFFSET;
 
@@ -168,8 +172,12 @@ void loop() {
     configuration.brightnessSlider = radioMsg.brightness;
     configuration.sensitivitySlider = radioMsg.sensitivity;
     configuration.speedSlider = radioMsg.speed;
+    configuration.patternLength = radioMsg.patternLength;
+    configuration.tileOffset = radioMsg.tileOffset;
     configuration.rainbowSwitch = radioMsg.rainbow;
     configuration.normalizeBandsSwitch = radioMsg.normalizeBands;
+    configuration.rgbButton = radioMsg.rgbButton;
+    configuration.rgb = radioMsg.rgb;
     portEXIT_CRITICAL(&configMux);
   }
 
@@ -190,7 +198,25 @@ void displayLedsFunction(void*) {
         while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
           vTaskDelay(1 / portTICK_PERIOD_MS);
         }
+        for (int i = 0; i < STRIP_COUNT; ++i) {
+          if ((configuration.rgb >> i) & 1) {
+            for (int j = 0; j < LEDS_PER_STRIP; ++j) {
+              const uint8_t tmp = leds[i][j].r;
+              leds[i][j].r = leds[i][j].g;
+              leds[i][j].g = tmp;
+            }
+          }
+        }
         driver.showPixels();
+        for (int i = 0; i < STRIP_COUNT; ++i) {
+          if ((configuration.rgb >> i) & 1) {
+            for (int j = 0; j < LEDS_PER_STRIP; ++j) {
+              const uint8_t tmp = leds[i][j].r;
+              leds[i][j].r = leds[i][j].g;
+              leds[i][j].g = tmp;
+            }
+          }
+        }
         xSemaphoreGive(artnetPixelsMutex);
       }
       delay(25); // ~40 fps
@@ -198,15 +224,25 @@ void displayLedsFunction(void*) {
     }
 
     // Audio-reactive mode (default, and resumed after ArtNet timeout)
-    for (int i = 0; i < 100; ++i) {
-      displaySpectrumAnalyzer(
-        configuration.brightnessSlider,
-        configuration.rainbowSwitch,
-        configuration.normalizeBandsSwitch,
-        configuration.sensitivitySlider,
-        configuration.speedSlider,
-        configuration.patternLength,
-        configuration.tileOffset);
+    for (int i = 0; i < 10; ++i) {
+      if (configuration.rgbButton) {
+        fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
+        for (int i = 0; i < STRIP_COUNT; ++i) {
+          leds[i][1] = leds[i][2] = leds[i][3] = CRGB::Red;
+        }
+        driver.showPixels(WAIT);
+        delay(100);
+      } else {
+        displaySpectrumAnalyzer(
+          configuration.brightnessSlider,
+          configuration.rainbowSwitch,
+          configuration.normalizeBandsSwitch,
+          configuration.sensitivitySlider,
+          configuration.speedSlider,
+          configuration.patternLength,
+          configuration.tileOffset,
+          configuration.rgb);
+      }
 
       if (Serial.available() > 0) {
         logDebug = true;

@@ -1,5 +1,6 @@
 #include <Arduino.h>
 #include <assert.h>
+#include <cstdint>
 #include <driver/i2s_std.h>
 #include <esp_check.h>
 #include <esp_log.h>
@@ -21,7 +22,7 @@
 #  define LOG_TIMING 0
 #endif
 
-#define SHOW_CONVERTER_LEDS 1
+#define SHOW_CONVERTER_LEDS 0
 #ifndef SHOW_CONVERTER_LEDS
 #  define SHOW_CONVERTER_LEDS 0
 #endif
@@ -69,7 +70,7 @@ static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
 static unsigned char brightness = 64;
 
 static void computeFft();
-static void renderFft(bool rainbow, bool normalizeBands, int patternLength, int tileOffset);
+static void renderFft(bool rainbow, bool normalizeBands, int patternLength, int tileOffset, const uint16_t rgb);
 static void slideDown(int count);
 static float maxOutputForNote(int note);
 static void normalizeTo0_1(float samples[], int length, float minimumDivisor);
@@ -110,7 +111,7 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft(const bool rainbow, const bool normalizeBands, const int patternLength, const int tileOffset) {
+static void renderFft(const bool rainbow, const bool normalizeBands, const int patternLength, const int tileOffset, const uint16_t rgb) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
@@ -191,8 +192,14 @@ static void renderFft(const bool rainbow, const bool normalizeBands, const int p
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
 
+      CRGB color = CHSV(hue, 255, gammaCorrected);
+      if ((rgb >> strip) & 1) {
+        const uint8_t tmp = color.r;
+        color.r = color.g;
+        color.g = tmp;
+      }
       for (int i = 0; i < SLIDE_COUNT; ++i) {
-        patternBuffer[strip][i] += CHSV(hue, 255, gammaCorrected);
+        patternBuffer[strip][i] += color;
       }
     }
     ++note;
@@ -208,7 +215,12 @@ static void renderFft(const bool rainbow, const bool normalizeBands, const int p
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
       for (int i = 0; i < SLIDE_COUNT; ++i) {
-        leds[strip][LEDS_PER_STRIP - 1 - i] += CHSV(hue, 255, gammaCorrected);
+        patternBuffer[strip][LEDS_PER_STRIP - 1 - i] += CHSV(hue, 255, gammaCorrected);
+        if ((rgb >> strip) & 1) {
+          const uint8_t tmp = patternBuffer[strip][LEDS_PER_STRIP - 1 - i].r;
+          patternBuffer[strip][LEDS_PER_STRIP - 1 - i].r = patternBuffer[strip][LEDS_PER_STRIP - 1 - i].g;
+          patternBuffer[strip][LEDS_PER_STRIP - 1 - i].g = tmp;
+        }
       }
     }
     ++note;
@@ -302,7 +314,8 @@ void displaySpectrumAnalyzer(
   const uint8_t sensitivity_p,
   const uint8_t speed_p,
   const int patternLength,
-  const int tileOffset
+  const int tileOffset,
+  const uint16_t rgb
 ) {
   #if LOG_TIMING
     const decltype(millis()) logTime_ms = 5000;
@@ -382,7 +395,7 @@ void displaySpectrumAnalyzer(
     part_us = micros();
   #endif
 
-  renderFft(rainbow, normalizeBands, patternLength, tileOffset);
+  renderFft(rainbow, normalizeBands, patternLength, tileOffset, rgb);
   #if LOG_TIMING
     const auto render_us = micros() - part_us;
   #endif

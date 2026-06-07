@@ -38,6 +38,7 @@ bool pollRadioReceiver(RadioConfigMessage_t& out) {
     return false;
   }
   if (buflen != sizeof(RadioConfigMessage_t)) {
+    Serial.printf("Wrong radio message size: %d, expected %d\n", buflen, sizeof(RadioConfigMessage_t));
     return false;
   }
 

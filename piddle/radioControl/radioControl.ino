@@ -42,29 +42,33 @@
 
 // RemoteXY GUI configuration
 #pragma pack(push, 1)
-uint8_t const PROGMEM RemoteXY_CONF_PROGMEM[] =   // 427 bytes V19
-  { 255,21,0,0,0,164,1,19,0,0,0,0,24,1,126,200,2,1,0,10,
-  0,129,32,15,62,12,64,17,66,114,105,103,104,116,110,101,115,115,0,129,
+uint8_t const PROGMEM RemoteXY_CONF_PROGMEM[] =   // 514 bytes V19
+  { 255,23,0,0,0,251,1,19,0,0,0,0,24,1,126,200,2,1,0,15,
+  0,129,32,18,62,12,64,17,66,114,105,103,104,116,110,101,115,115,0,129,
   33,47,60,12,64,17,83,101,110,115,105,116,105,118,105,116,121,0,4,12,
-  32,104,10,128,2,26,4,12,62,104,10,128,2,26,129,43,76,35,12,64,
-  17,83,112,101,101,100,0,4,12,90,104,10,128,2,26,2,71,115,30,12,
-  1,2,26,31,31,79,78,0,79,70,70,0,129,21,116,48,12,64,17,82,
-  97,105,110,98,111,119,0,2,75,134,30,12,1,2,26,31,31,79,78,0,
-  79,70,70,0,129,16,135,57,12,64,17,78,111,114,109,97,108,105,122,101,
-  0,16,0,1,51,4,24,24,0,2,31,0,2,11,35,24,11,0,2,26,
-  31,31,79,78,0,79,70,70,0,2,11,51,24,11,0,2,26,31,31,79,
-  78,0,79,70,70,0,2,11,67,24,11,0,2,26,31,31,79,78,0,79,
-  70,70,0,2,11,83,24,11,0,2,26,31,31,79,78,0,79,70,70,0,
-  2,11,99,24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,11,115,
-  24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,11,131,24,11,0,
-  2,26,31,31,79,78,0,79,70,70,0,2,11,147,24,11,0,2,26,31,
-  31,79,78,0,79,70,70,0,2,11,163,24,11,0,2,26,31,31,79,78,
-  0,79,70,70,0,2,51,35,24,11,0,2,26,31,31,79,78,0,79,70,
-  70,0,2,51,51,24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,
-  51,67,24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,51,83,24,
-  11,0,2,26,31,31,79,78,0,79,70,70,0,2,51,99,24,11,0,2,
-  26,31,31,79,78,0,79,70,70,0,2,51,115,24,11,0,2,26,31,31,
-  79,78,0,79,70,70,0 };
+  33,104,10,128,2,26,4,12,60,104,10,128,2,26,129,43,76,35,12,64,
+  17,83,112,101,101,100,0,4,12,89,104,10,128,2,26,2,71,161,30,12,
+  1,2,26,31,31,79,78,0,79,70,70,0,129,21,162,48,12,64,17,82,
+  97,105,110,98,111,119,0,2,75,180,30,12,1,2,26,31,31,79,78,0,
+  79,70,70,0,129,16,181,57,12,64,17,78,111,114,109,97,108,105,122,101,
+  0,129,25,103,79,12,64,17,80,97,116,116,101,114,110,32,108,101,110,103,
+  116,104,0,4,12,117,104,10,128,2,26,129,32,129,57,12,64,17,84,105,
+  108,101,32,111,102,102,115,101,116,0,4,12,143,104,10,128,2,26,131,97,
+  5,22,12,1,151,148,31,0,6,17,0,2,11,35,24,11,0,2,26,31,
+  31,79,78,0,79,70,70,0,2,11,51,24,11,0,2,26,31,31,79,78,
+  0,79,70,70,0,2,11,67,24,11,0,2,26,31,31,79,78,0,79,70,
+  70,0,2,11,83,24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,
+  11,99,24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,11,115,24,
+  11,0,2,26,31,31,79,78,0,79,70,70,0,2,11,131,24,11,0,2,
+  26,31,31,79,78,0,79,70,70,0,2,11,147,24,11,0,2,26,31,31,
+  79,78,0,79,70,70,0,2,11,163,24,11,0,2,26,31,31,79,78,0,
+  79,70,70,0,2,51,35,24,11,0,2,26,31,31,79,78,0,79,70,70,
+  0,2,51,51,24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,51,
+  67,24,11,0,2,26,31,31,79,78,0,79,70,70,0,2,51,83,24,11,
+  0,2,26,31,31,79,78,0,79,70,70,0,2,51,99,24,11,0,2,26,
+  31,31,79,78,0,79,70,70,0,2,51,115,24,11,0,2,26,31,31,79,
+  78,0,79,70,70,0,131,97,5,22,12,1,151,148,31,0,9,10,62,141,
+  24,24,48,4,26,31,79,78,0,31,79,70,70,0 };
 
 // this structure defines all the variables and events of your control interface
 struct RemoteXY_t {
@@ -75,7 +79,8 @@ struct RemoteXY_t {
   int8_t speedSlider; // from 0 to 100
   uint8_t rainbowSwitch; // =1 if switch ON and =0 if OFF, from 0 to 1
   uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF, from 0 to 1
-  uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
+  int8_t patternLengthSlider; // from 0 to 100
+  int8_t tileOffsetSlider; // from 0 to 100
   uint8_t rgb01Switch; // =1 if switch ON and =0 if OFF, from 0 to 1
   uint8_t rgb02Switch; // =1 if switch ON and =0 if OFF, from 0 to 1
   uint8_t rgb03Switch; // =1 if switch ON and =0 if OFF, from 0 to 1
@@ -91,6 +96,7 @@ struct RemoteXY_t {
   uint8_t rgb13Switch; // =1 if switch ON and =0 if OFF, from 0 to 1
   uint8_t rgb14Switch; // =1 if switch ON and =0 if OFF, from 0 to 1
   uint8_t rgb15Switch; // =1 if switch ON and =0 if OFF, from 0 to 1
+  uint8_t rgbButton; // =1 if state is ON, else =0, from 0 to 1
 
     // other variable
   uint8_t connect_flag;  // =1 if wire connected, else =0
@@ -125,8 +131,8 @@ void setup() {
   RemoteXY.normalizeBandsSwitch = true;
   RemoteXY.speedSlider = DEFAULT_SPEED;
   RemoteXY.sensitivitySlider = DEFAULT_SENSITIVITY;
-  //RemoteXY.patternLength = DEFAULT_PATTERN_LENGTH;
-  //RemoteXY.tileOffset = DEFAULT_TILE_OFFSET;
+  RemoteXY.patternLengthSlider = DEFAULT_PATTERN_LENGTH;
+  RemoteXY.tileOffsetSlider = DEFAULT_TILE_OFFSET;
 }
 
 void sendRadioUpdate();
@@ -152,6 +158,8 @@ void sendRadioUpdate() {
   message.brightness = RemoteXY.brightnessSlider;
   message.sensitivity = RemoteXY.sensitivitySlider;
   message.speed = RemoteXY.speedSlider;
+  message.patternLength = RemoteXY.patternLengthSlider;
+  message.tileOffset = RemoteXY.tileOffsetSlider;
   message.rainbow = RemoteXY.rainbowSwitch;
   message.normalizeBands = RemoteXY.normalizeBandsSwitch;
   message.rgbButton = RemoteXY.rgbButton;
