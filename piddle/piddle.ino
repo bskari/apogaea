@@ -190,6 +190,19 @@ void collectSamplesFunction(void*) {
   }
 }
 
+void swapChannels(uint16_t rgbBitFlag) {
+  for (int i = 0; i < STRIP_COUNT; ++i) {
+    if ((rgbBitFlag >> i) & 1) {
+      // Skip the converter LEDs
+      for (int j = 1; j < LEDS_PER_STRIP; ++j) {
+        const uint8_t tmp = leds[i][j].r;
+        leds[i][j].r = leds[i][j].g;
+        leds[i][j].g = tmp;
+      }
+    }
+  }
+}
+
 void displayLedsFunction(void*) {
   while (1) {
     if (artnetMode) {
@@ -198,25 +211,9 @@ void displayLedsFunction(void*) {
         while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
           vTaskDelay(1 / portTICK_PERIOD_MS);
         }
-        for (int i = 0; i < STRIP_COUNT; ++i) {
-          if ((configuration.rgb >> i) & 1) {
-            for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-              const uint8_t tmp = leds[i][j].r;
-              leds[i][j].r = leds[i][j].g;
-              leds[i][j].g = tmp;
-            }
-          }
-        }
+        swapChannels(configuration.rgb);
         driver.showPixels();
-        for (int i = 0; i < STRIP_COUNT; ++i) {
-          if ((configuration.rgb >> i) & 1) {
-            for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-              const uint8_t tmp = leds[i][j].r;
-              leds[i][j].r = leds[i][j].g;
-              leds[i][j].g = tmp;
-            }
-          }
-        }
+        swapChannels(configuration.rgb);
         xSemaphoreGive(artnetPixelsMutex);
       }
       delay(25); // ~40 fps
@@ -230,6 +227,7 @@ void displayLedsFunction(void*) {
         for (int i = 0; i < STRIP_COUNT; ++i) {
           leds[i][1] = leds[i][2] = leds[i][3] = CRGB::Red;
         }
+        swapChannels(configuration.rgb);
         driver.showPixels(WAIT);
         delay(100);
       } else {
