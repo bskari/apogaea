@@ -22,7 +22,6 @@
 #  define LOG_TIMING 0
 #endif
 
-#define SHOW_CONVERTER_LEDS 0
 #ifndef SHOW_CONVERTER_LEDS
 #  define SHOW_CONVERTER_LEDS 0
 #endif

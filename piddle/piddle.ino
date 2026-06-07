@@ -12,6 +12,10 @@
 #include "radioReceiver.hpp"
 #include "spectrumAnalyzer.hpp"
 
+#ifndef SHOW_CONVERTER_LEDS
+  #define SHOW_CONVERTER_LEDS 0
+#endif
+
 struct {
   int8_t brightnessSlider; // from 0 to 100
   int8_t sensitivitySlider; // from 0 to 100
@@ -212,6 +216,11 @@ void displayLedsFunction(void*) {
           vTaskDelay(1 / portTICK_PERIOD_MS);
         }
         swapChannels(configuration.rgb);
+        #if ! SHOW_CONVERTER_LEDS
+          for (int i = 0; i < STRIP_COUNT; ++i) {
+            leds[i][0] = CRGB::Black;
+          }
+        #endif
         driver.showPixels();
         swapChannels(configuration.rgb);
         xSemaphoreGive(artnetPixelsMutex);
