@@ -141,8 +141,6 @@ void loop() {
     delay(500);
     artnetPixels = reinterpret_cast<CRGB*>(leds);
 
-    vTaskSuspend(collectSamplesTask);
-
     // Suspend the display task and push black to all strips before WiFi init.
     // WiFi can drive pin 2 (which is also an LED output) during station connect,
     // causing the WS2812B on that strip to latch a white frame.
@@ -209,22 +207,20 @@ void swapChannels(uint16_t rgbBitFlag) {
 
 void displayLedsFunction(void*) {
   while (1) {
-    if (artnetMode) {
-      if (artnetActive) {
-        // ArtNet receiver writes directly into leds (artnetPixels points at leds)
-        while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
-          vTaskDelay(1 / portTICK_PERIOD_MS);
-        }
-        swapChannels(configuration.rgb);
-        #if ! SHOW_CONVERTER_LEDS
-          for (int i = 0; i < STRIP_COUNT; ++i) {
-            leds[i][0] = CRGB::Black;
-          }
-        #endif
-        driver.showPixels();
-        swapChannels(configuration.rgb);
-        xSemaphoreGive(artnetPixelsMutex);
+    if (artnetMode && artnetActive) {
+      // ArtNet receiver writes directly into leds (artnetPixels points at leds)
+      while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
+        vTaskDelay(1 / portTICK_PERIOD_MS);
       }
+      swapChannels(configuration.rgb);
+      #if ! SHOW_CONVERTER_LEDS
+        for (int i = 0; i < STRIP_COUNT; ++i) {
+          leds[i][0] = CRGB::Black;
+        }
+      #endif
+      driver.showPixels();
+      swapChannels(configuration.rgb);
+      xSemaphoreGive(artnetPixelsMutex);
       delay(25); // ~40 fps
       continue;
     }

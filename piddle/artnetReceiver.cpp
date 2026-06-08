@@ -93,6 +93,7 @@ void artnetReceiverFunction(void*) {
       lastPacketMs = millis();
       if (!artnetActive) {
         artnetActive = true;
+        vTaskSuspend(collectSamplesTaskHandle);
         Serial.println("ArtNet: receiving");
       }
     } else if (opcode == 0x2000) {
