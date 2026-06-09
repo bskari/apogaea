@@ -59,13 +59,17 @@ constexpr int LED_PINS[] = {
     // 11:45 D15
     12
   #else
-    #warning "Using V2.2 pins"
-    // Start at 12:00 then go clockwise
-    21, 19, 18, 5, 17, 16, 4, 2,
-    // Past 6:00 on the PCB
-    15,
-    // Left side of the Arduino
-    13, 12, 14, 27, 33, 32
+    #ifdef USE_V2_2_PINS
+      #warning "Using V2.2 pins"
+      // Start at 12:00 then go clockwise
+      21, 19, 18, 5, 17, 16, 4, 2,
+      // Past 6:00 on the PCB
+      15,
+      // Left side of the Arduino
+      13, 12, 14, 27, 33, 32
+    #else
+      #error "Must define either USE_V2_1_PINS or USE_V2_2_PINS"
+    #endif
   #endif
 };
 const int STRIP_COUNT = COUNT_OF(LED_PINS);
