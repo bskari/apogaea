@@ -2,7 +2,13 @@
 #define COUNT_OF(x) (sizeof(x) / sizeof(0[x]))
 
 #ifndef LED_BUILTIN
-#define LED_BUILTIN 2
+#  define LED_BUILTIN 2
+#endif
+
+// The first LED in each strip in `leds` is a converter LED and is physically placed on the circuit
+// board. It's nice for testing, but annoying when run live. Enable or disable them here.
+#ifndef SHOW_CONVERTER_LEDS
+#  define SHOW_CONVERTER_LEDS 0
 #endif
 
 const int LEDS_PER_STRIP = 151;

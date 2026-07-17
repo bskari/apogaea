@@ -8,9 +8,6 @@
 #define ARTNET_PORT           6454
 #define ARTNET_TIMEOUT_MS     2 * 60 * 1000
 #define ARTNET_UNIVERSE_OFFSET   0   // Strip 0 = universe 0
-#ifndef SHOW_CONVERTER_LEDS
-#  define SHOW_CONVERTER_LEDS 0
-#endif
 
 volatile bool artnetActive = false;
 

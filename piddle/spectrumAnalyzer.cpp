@@ -22,10 +22,6 @@
 #  define LOG_TIMING 0
 #endif
 
-#ifndef SHOW_CONVERTER_LEDS
-#  define SHOW_CONVERTER_LEDS 0
-#endif
-
 static const int I2S_SAMPLE_RATE_HZ = 44100; // Sample rate of the I2S microphone
 static const int MAX_I2S_BUFFER_LENGTH = 512;
 
