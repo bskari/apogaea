@@ -143,13 +143,13 @@ void loop() {
     // WiFi can drive pin 2 (which is also an LED output) during station connect,
     // causing the WS2812B on that strip to latch a white frame.
     vTaskSuspend(displayLedsTask);
-    memset(leds, 0, sizeof(leds));
+    ::memset(leds, 0, sizeof(leds));
     driver.showPixels(WAIT);
 
     setupArtnet(collectSamplesTask, &artnetMode);
 
     // Clear again after WiFi init in case any strip latched interference during init.
-    memset(leds, 0, sizeof(leds));
+    ::memset(leds, 0, sizeof(leds));
     driver.showPixels(WAIT);
 
     artnetMode = true;

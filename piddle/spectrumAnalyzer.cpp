@@ -488,7 +488,7 @@ void displaySpectrumAnalyzer(
 static void slideDown(const int count) {
   const int byteCount = (LEDS_PER_STRIP - count) * sizeof(patternBuffer[0][0]);
   for (int i = 0; i < STRIP_COUNT; ++i) {
-    memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
+    ::memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
   }
 }
 

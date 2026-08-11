@@ -142,7 +142,7 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
                              uint8_t startUniverse, uint8_t numPorts) {
   // ArtPollReply is always exactly 239 bytes.
   uint8_t reply[239];
-  memset(reply, 0, sizeof(reply));
+  ::memset(reply, 0, sizeof(reply));
 
   IPAddress ip = WiFi.softAPIP();
   uint8_t mac[6];
