@@ -3,6 +3,8 @@
 // To upload:
 // arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32da
 
+// Currently using FastLED 3.7.8
+
 #include <FastLED.h>
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"

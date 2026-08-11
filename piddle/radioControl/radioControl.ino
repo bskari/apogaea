@@ -30,7 +30,7 @@
 #include <BLEDevice.h>
 
 // RemoteXY connection settings
-#define REMOTEXY_BLUETOOTH_NAME "Phonic Bloom"
+#define REMOTEXY_BLUETOOTH_NAME "Phonic Bloom config"
 
 
 #include <RemoteXY.h>
