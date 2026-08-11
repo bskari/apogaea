@@ -1,5 +1,7 @@
+#pragma once
 #include <stdint.h>
-struct RadioConfigMessage_t {
+
+struct BleConfigMessage_t {
   int8_t brightness; // from 0 to 100
   int8_t sensitivity; // from 0 to 100
   int8_t speed; // from 0 to 100
@@ -10,3 +12,14 @@ struct RadioConfigMessage_t {
   uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or not
 };
+
+void setupBleConfigService();
+bool pollBleConfigService(BleConfigMessage_t& out);
+
+// True once any message (valid or not) has been written to the config characteristic.
+bool hasReceivedBleConfigMessage();
+
+// Stops advertising, drops any connected central, and fully releases the BT controller/host so
+// something else (e.g. classic BT A2DP) can take over the radio. BLE cannot be restarted after
+// this without rebooting.
+void teardownBleConfigService();

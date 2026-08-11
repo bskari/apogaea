@@ -3,6 +3,8 @@ EXTRA_FLAGS='-DNUMSTRIPS=15 -DNUM_LEDS_PER_STRIP=151'
 PASSTHROUGH=''
 PINS_SET=0
 
+# --v2-1-pins is the default, it's the board I have as of now
+
 for arg in "$@"; do
     case "$arg" in
         --v2-1-pins) EXTRA_FLAGS="$EXTRA_FLAGS -DUSE_V2_1_PINS"; PINS_SET=1 ;;
