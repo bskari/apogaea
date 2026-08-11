@@ -3,9 +3,15 @@
 // To upload:
 // arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32da
 
-// Currently using FastLED 3.7.8
+
 
 #include <FastLED.h>
+
+// Tested on FastLED 3.7.8, other versions crash
+#if FASTLED_VERSION != 3007008
+#  warning "Newer versions of FastLED don't work, 3.7.8 is tested and does."
+#  warning "If it plays the converter animation then freezes, try 3.7.8."
+#endif
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
 #include "artnetReceiver.hpp"
