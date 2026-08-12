@@ -19,6 +19,9 @@ bool pollBleConfigService(BleConfigMessage_t& out);
 // True once any message (valid or not) has been written to the config characteristic.
 bool hasReceivedBleConfigMessage();
 
+// True while a BLE central is connected.
+bool isBleClientConnected();
+
 // Stops advertising, drops any connected central, and fully releases the BT controller/host so
 // something else (e.g. classic BT A2DP) can take over the radio. BLE cannot be restarted after
 // this without rebooting.

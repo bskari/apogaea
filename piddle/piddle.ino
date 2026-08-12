@@ -16,6 +16,7 @@
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
 #include "artnetReceiver.hpp"
 #include "bleConfigService.hpp"
+#include "bluetoothAudio.hpp"
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
@@ -44,9 +45,12 @@ I2SClocklessLedDriver driver;
 static volatile bool switchToArtnetRequested = false;
 static volatile bool artnetMode = false;
 
-// Testing BLE config in isolation - Bluetooth A2DP audio is disabled, so BLE config runs
-// indefinitely instead of timing out and switching over.
+// At boot we only run the BLE config service (BLE and classic BT A2DP can't reliably share the
+// radio - see git history). If nobody configures us over BLE within this window, give up on BLE
+// and switch to Bluetooth audio instead.
+const uint32_t BLE_CONFIG_TIMEOUT_MS = 120000;
 static bool bleConfigActive = true;
+static uint32_t bleConfigStartMillis = 0;
 
 void IRAM_ATTR buttonInterrupt() {
   static uint32_t pressTime = 0;
@@ -110,6 +114,7 @@ void setup() {
 
   Serial.println("Setting up BLE config service");
   setupBleConfigService();
+  bleConfigStartMillis = millis();
   Serial.println("Done setting up BLE config service");
 
   // Test all the logic level converter LEDs
@@ -151,6 +156,8 @@ void loop() {
     if (bleConfigActive) {
       teardownBleConfigService();
       bleConfigActive = false;
+    } else {
+      teardownBluetoothAudio();
     }
     delay(500);
     artnetPixels = reinterpret_cast<CRGB*>(leds);
@@ -173,29 +180,37 @@ void loop() {
   }
 
   if (bleConfigActive) {
-    BleConfigMessage_t bleMsg;
-    if (pollBleConfigService(bleMsg)) {
-      Serial.printf(
-        "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x\n",
-        bleMsg.brightness,
-        bleMsg.sensitivity,
-        bleMsg.speed,
-        bleMsg.rainbow,
-        bleMsg.normalizeBands,
-        bleMsg.rgbButton,
-        bleMsg.rgb
-      );
-      portENTER_CRITICAL(&configMux);
-      configuration.brightnessSlider = bleMsg.brightness;
-      configuration.sensitivitySlider = bleMsg.sensitivity;
-      configuration.speedSlider = bleMsg.speed;
-      configuration.patternLength = bleMsg.patternLength;
-      configuration.tileOffset = bleMsg.tileOffset;
-      configuration.rainbowSwitch = bleMsg.rainbow;
-      configuration.normalizeBandsSwitch = bleMsg.normalizeBands;
-      configuration.rgbButton = bleMsg.rgbButton;
-      configuration.rgb = bleMsg.rgb;
-      portEXIT_CRITICAL(&configMux);
+    if (!isBleClientConnected() && !hasReceivedBleConfigMessage() &&
+        millis() - bleConfigStartMillis > BLE_CONFIG_TIMEOUT_MS) {
+      Serial.println("No BLE config message received - switching to Bluetooth audio");
+      teardownBleConfigService();
+      bleConfigActive = false;
+      setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
+    } else {
+      BleConfigMessage_t bleMsg;
+      if (pollBleConfigService(bleMsg)) {
+        Serial.printf(
+          "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x\n",
+          bleMsg.brightness,
+          bleMsg.sensitivity,
+          bleMsg.speed,
+          bleMsg.rainbow,
+          bleMsg.normalizeBands,
+          bleMsg.rgbButton,
+          bleMsg.rgb
+        );
+        portENTER_CRITICAL(&configMux);
+        configuration.brightnessSlider = bleMsg.brightness;
+        configuration.sensitivitySlider = bleMsg.sensitivity;
+        configuration.speedSlider = bleMsg.speed;
+        configuration.patternLength = bleMsg.patternLength;
+        configuration.tileOffset = bleMsg.tileOffset;
+        configuration.rainbowSwitch = bleMsg.rainbow;
+        configuration.normalizeBandsSwitch = bleMsg.normalizeBands;
+        configuration.rgbButton = bleMsg.rgbButton;
+        configuration.rgb = bleMsg.rgb;
+        portEXIT_CRITICAL(&configMux);
+      }
     }
   }
 

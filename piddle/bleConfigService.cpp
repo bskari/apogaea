@@ -14,6 +14,20 @@ portMUX_TYPE bleConfigMux = portMUX_INITIALIZER_UNLOCKED;
 BleConfigMessage_t pendingMessage;
 volatile bool messagePending = false;
 volatile bool anyMessageReceived = false;
+volatile bool clientConnected = false;
+
+class ConfigServerCallbacks : public BLEServerCallbacks {
+  void onConnect(BLEServer* server) override {
+    clientConnected = true;
+  }
+
+  void onDisconnect(BLEServer* server) override {
+    clientConnected = false;
+    server->getAdvertising()->start();
+  }
+};
+
+ConfigServerCallbacks configServerCallbacks;
 
 class ConfigWriteCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* characteristic) override {
@@ -41,6 +55,7 @@ ConfigWriteCallbacks configWriteCallbacks;
 void setupBleConfigService() {
   BLEDevice::init("Phonic Bloom config");
   BLEServer* server = BLEDevice::createServer();
+  server->setCallbacks(&configServerCallbacks);
   BLEService* service = server->createService(kServiceUuid);
 
   BLECharacteristic* configCharacteristic = service->createCharacteristic(
@@ -61,6 +76,10 @@ void setupBleConfigService() {
 
 bool hasReceivedBleConfigMessage() {
   return anyMessageReceived;
+}
+
+bool isBleClientConnected() {
+  return clientConnected;
 }
 
 void teardownBleConfigService() {
