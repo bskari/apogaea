@@ -82,6 +82,9 @@ bool pollBleConfigService(BleConfigMessage_t& out) {
   if (msg.brightness < 0 || msg.brightness > 100) return false;
   if (msg.sensitivity < 0 || msg.sensitivity > 100) return false;
   if (msg.speed < 0 || msg.speed > 100) return false;
+  // patternLength is a divisor below (renderFft), so 0 must never reach the LED code.
+  if (msg.patternLength < 5 || msg.patternLength > 100) return false;
+  if (msg.tileOffset < 0 || msg.tileOffset > 100) return false;
   if (msg.rainbow > 1) return false;
   if (msg.normalizeBands > 1) return false;
 

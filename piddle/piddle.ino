@@ -16,7 +16,6 @@
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
 #include "artnetReceiver.hpp"
 #include "bleConfigService.hpp"
-#include "bluetoothAudio.hpp"
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
@@ -45,12 +44,9 @@ I2SClocklessLedDriver driver;
 static volatile bool switchToArtnetRequested = false;
 static volatile bool artnetMode = false;
 
-// At boot we only run the BLE config service (BLE and classic BT A2DP can't reliably share the
-// radio - see git history). If nobody configures us over BLE within this window, give up on BLE
-// and switch to Bluetooth audio instead.
-const uint32_t BLE_CONFIG_TIMEOUT_MS = 120000;
+// Testing BLE config in isolation - Bluetooth A2DP audio is disabled, so BLE config runs
+// indefinitely instead of timing out and switching over.
 static bool bleConfigActive = true;
-static uint32_t bleConfigStartMillis = 0;
 
 void IRAM_ATTR buttonInterrupt() {
   static uint32_t pressTime = 0;
@@ -103,7 +99,10 @@ void setup() {
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
     "collectSamples",
-    8000, // Stack size in words
+    // Measured with uxTaskGetStackHighWaterMark: only ~672 words actually used out of the 8000
+    // this was previously allocated. That oversized stack was starving the BT stack of internal
+    // RAM, causing a crash on BLE connect.
+    1500, // Stack size in words
     nullptr, // Task input parameter
     1, // Priority of the task
     &collectSamplesTask, // Task handle.
@@ -111,7 +110,6 @@ void setup() {
 
   Serial.println("Setting up BLE config service");
   setupBleConfigService();
-  bleConfigStartMillis = millis();
   Serial.println("Done setting up BLE config service");
 
   // Test all the logic level converter LEDs
@@ -132,7 +130,8 @@ void setup() {
     }
   }
 
-  // We need to do this last because it will preempt the setup thread that's running on core 0
+  // Pinned to core 1 (not core 0) - core 0 also runs the BT/BLE stack tasks, and a tight
+  // LED-render/DMA loop there starves/corrupts the BT stack and crashes it on connect.
   xTaskCreatePinnedToCore(
     displayLedsFunction,
     "displayLeds",
@@ -141,7 +140,7 @@ void setup() {
     nullptr, // Task input parameter
     1, // Priority of the task
     &displayLedsTask, // Task handle.
-    0); // Core where the task should run
+    1); // Core where the task should run
   Serial.println("Done with setup");
 }
 
@@ -152,8 +151,6 @@ void loop() {
     if (bleConfigActive) {
       teardownBleConfigService();
       bleConfigActive = false;
-    } else {
-      teardownBluetoothAudio();
     }
     delay(500);
     artnetPixels = reinterpret_cast<CRGB*>(leds);
@@ -176,36 +173,29 @@ void loop() {
   }
 
   if (bleConfigActive) {
-    if (!hasReceivedBleConfigMessage() && millis() - bleConfigStartMillis > BLE_CONFIG_TIMEOUT_MS) {
-      Serial.println("No BLE config message received - switching to Bluetooth audio");
-      teardownBleConfigService();
-      bleConfigActive = false;
-      setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
-    } else {
-      BleConfigMessage_t bleMsg;
-      if (pollBleConfigService(bleMsg)) {
-        Serial.printf(
-          "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x\n",
-          bleMsg.brightness,
-          bleMsg.sensitivity,
-          bleMsg.speed,
-          bleMsg.rainbow,
-          bleMsg.normalizeBands,
-          bleMsg.rgbButton,
-          bleMsg.rgb
-        );
-        portENTER_CRITICAL(&configMux);
-        configuration.brightnessSlider = bleMsg.brightness;
-        configuration.sensitivitySlider = bleMsg.sensitivity;
-        configuration.speedSlider = bleMsg.speed;
-        configuration.patternLength = bleMsg.patternLength;
-        configuration.tileOffset = bleMsg.tileOffset;
-        configuration.rainbowSwitch = bleMsg.rainbow;
-        configuration.normalizeBandsSwitch = bleMsg.normalizeBands;
-        configuration.rgbButton = bleMsg.rgbButton;
-        configuration.rgb = bleMsg.rgb;
-        portEXIT_CRITICAL(&configMux);
-      }
+    BleConfigMessage_t bleMsg;
+    if (pollBleConfigService(bleMsg)) {
+      Serial.printf(
+        "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x\n",
+        bleMsg.brightness,
+        bleMsg.sensitivity,
+        bleMsg.speed,
+        bleMsg.rainbow,
+        bleMsg.normalizeBands,
+        bleMsg.rgbButton,
+        bleMsg.rgb
+      );
+      portENTER_CRITICAL(&configMux);
+      configuration.brightnessSlider = bleMsg.brightness;
+      configuration.sensitivitySlider = bleMsg.sensitivity;
+      configuration.speedSlider = bleMsg.speed;
+      configuration.patternLength = bleMsg.patternLength;
+      configuration.tileOffset = bleMsg.tileOffset;
+      configuration.rainbowSwitch = bleMsg.rainbow;
+      configuration.normalizeBandsSwitch = bleMsg.normalizeBands;
+      configuration.rgbButton = bleMsg.rgbButton;
+      configuration.rgb = bleMsg.rgb;
+      portEXIT_CRITICAL(&configMux);
     }
   }
 
