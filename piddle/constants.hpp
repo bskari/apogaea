@@ -11,6 +11,13 @@
 #  define SHOW_CONVERTER_LEDS 0
 #endif
 
+// ArtNet/WiFi pulls in a lot of extra RAM (WiFi stack) which is suspected of starving the BT/BLE
+// stack, causing it to fail to advertise after switching to Bluetooth audio. Disable it here to
+// test that theory, or if it's just not needed.
+#ifndef ENABLE_ARTNET
+#  define ENABLE_ARTNET 0
+#endif
+
 const int LEDS_PER_STRIP = 151;
 
 const int VOLTAGE_PIN = 36;

@@ -14,13 +14,16 @@
 #endif
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
-#include "artnetReceiver.hpp"
 #include "bleConfigService.hpp"
 #include "bluetoothAudio.hpp"
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
-struct {
+#if ENABLE_ARTNET
+#  include "artnetReceiver.hpp"
+#endif
+
+struct Configuration_t {
   int8_t brightnessSlider; // from 0 to 100
   int8_t sensitivitySlider; // from 0 to 100
   int8_t speedSlider; // from 0 to 100
@@ -30,7 +33,8 @@ struct {
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or GRB
   uint8_t patternLength; // number of LEDs per repeating tile (5..LEDS_PER_STRIP)
   uint8_t tileOffset;   // how many history positions each successive tile shifts (0 = identical copies)
-} configuration;
+};
+Configuration_t configuration;
 
 void blink(const int delay_ms = 500);
 
@@ -48,9 +52,26 @@ static volatile bool artnetMode = false;
 // At boot we only run the BLE config service (BLE and classic BT A2DP can't reliably share the
 // radio - see git history). If nobody configures us over BLE within this window, give up on BLE
 // and switch to Bluetooth audio instead.
-const uint32_t BLE_CONFIG_TIMEOUT_MS = 120000;
+const uint32_t BLE_CONFIG_TIMEOUT_MS = 30000;
 static bool bleConfigActive = true;
 static uint32_t bleConfigStartMillis = 0;
+
+// Switching from BLE to classic Bluetooth (A2DP) in the same running process leaves Bluedroid's
+// internal state (e.g. the BTU alarm hash maps, torn down in BTU_ShutDown() when BLE stops) in a
+// state that isn't reliably rebuilt for the second stack - it crashes with
+// "assert failed: hash_map_set" during AVRC service discovery on connect. Rebooting into Bluetooth
+// audio mode instead gives Bluedroid a clean, single-stack boot.
+//
+// RTC_NOINIT_ATTR (not RTC_DATA_ATTR!) - RTC_DATA_ATTR variables are re-initialized from their
+// flash-stored initializer on every boot, including a plain esp_restart(), so a value set just
+// before restart would already be lost by the time setup() reads it. RTC_NOINIT_ATTR is left
+// completely untouched by the loader, so it actually survives. The tradeoff is it's uninitialized
+// garbage on a true power-on, so we only trust it when esp_reset_reason() confirms this was our
+// own ESP.restart() call (see setup()).
+RTC_NOINIT_ATTR static bool bootIntoBluetoothAudio;
+// Snapshot of `configuration` taken right before the restart above, so settings from BLE aren't
+// lost when we reboot into Bluetooth audio mode.
+RTC_NOINIT_ATTR static Configuration_t rtcSavedConfiguration;
 
 void IRAM_ATTR buttonInterrupt() {
   static uint32_t pressTime = 0;
@@ -77,6 +98,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Setup");
 
+  // bootIntoBluetoothAudio lives in RTC_NOINIT_ATTR memory, so it's garbage on a genuine power-on -
+  // only trust it when the reset reason confirms it was actually our own ESP.restart() call below.
+  if (esp_reset_reason() != ESP_RST_SW) {
+    bootIntoBluetoothAudio = false;
+  }
+
   // This had to be done first, but I think I fixed the bug that was causing problems? I don't want
   // to test if it's fixed, so I'm leaving it first now
   setupSpectrumAnalyzer();
@@ -100,6 +127,11 @@ void setup() {
   configuration.patternLength = DEFAULT_PATTERN_LENGTH;
   configuration.tileOffset = DEFAULT_TILE_OFFSET;
 
+  if (bootIntoBluetoothAudio) {
+    // Restore whatever was configured over BLE before we rebooted into Bluetooth audio mode.
+    configuration = rtcSavedConfiguration;
+  }
+
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
     "collectSamples",
@@ -112,10 +144,17 @@ void setup() {
     &collectSamplesTask, // Task handle.
     1); // Core where the task should run
 
-  Serial.println("Setting up BLE config service");
-  setupBleConfigService();
-  bleConfigStartMillis = millis();
-  Serial.println("Done setting up BLE config service");
+  if (bootIntoBluetoothAudio) {
+    bootIntoBluetoothAudio = false;
+    bleConfigActive = false;
+    Serial.println("Booting straight into Bluetooth audio (BLE config skipped this boot)");
+    setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
+  } else {
+    Serial.println("Setting up BLE config service");
+    setupBleConfigService();
+    bleConfigStartMillis = millis();
+    Serial.println("Done setting up BLE config service");
+  }
 
   // Test all the logic level converter LEDs
   uint8_t hue = 0;
@@ -152,6 +191,7 @@ void setup() {
 void loop() {
   if (switchToArtnetRequested && !artnetMode) {
     switchToArtnetRequested = false;
+#if ENABLE_ARTNET
     Serial.println("Switching to ArtNet mode");
     if (bleConfigActive) {
       teardownBleConfigService();
@@ -177,15 +217,21 @@ void loop() {
 
     artnetMode = true;
     vTaskResume(displayLedsTask);
+#else
+    Serial.println("ArtNet is disabled (ENABLE_ARTNET=0)");
+#endif
   }
 
   if (bleConfigActive) {
-    if (!isBleClientConnected() && !hasReceivedBleConfigMessage() &&
-        millis() - bleConfigStartMillis > BLE_CONFIG_TIMEOUT_MS) {
-      Serial.println("No BLE config message received - switching to Bluetooth audio");
+    if (!isBleClientConnected() && millis() - bleConfigStartMillis > BLE_CONFIG_TIMEOUT_MS) {
+      Serial.println("No BLE config message received - rebooting into Bluetooth audio");
       teardownBleConfigService();
-      bleConfigActive = false;
-      setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
+      portENTER_CRITICAL(&configMux);
+      rtcSavedConfiguration = configuration;
+      portEXIT_CRITICAL(&configMux);
+      bootIntoBluetoothAudio = true;
+      delay(100); // let the log line above actually flush over serial
+      ESP.restart();
     } else {
       BleConfigMessage_t bleMsg;
       if (pollBleConfigService(bleMsg)) {
@@ -238,6 +284,7 @@ void swapChannels(uint16_t rgbBitFlag) {
 
 void displayLedsFunction(void*) {
   while (1) {
+#if ENABLE_ARTNET
     if (artnetMode && artnetActive) {
       // ArtNet receiver writes directly into leds (artnetPixels points at leds)
       while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
@@ -255,6 +302,7 @@ void displayLedsFunction(void*) {
       delay(25); // ~40 fps
       continue;
     }
+#endif
 
     // Audio-reactive mode (default, and resumed after ArtNet timeout)
     for (int i = 0; i < 10; ++i) {

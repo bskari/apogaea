@@ -1,6 +1,9 @@
 #pragma once
 
 #include "constants.hpp"
+
+#if ENABLE_ARTNET
+
 #include <FastLED.h>
 #include <freertos/semphr.h>
 
@@ -21,3 +24,5 @@ extern CRGB* artnetPixels;
 
 // Mutex that must be held while reading or writing artnetPixels.
 extern SemaphoreHandle_t artnetPixelsMutex;
+
+#endif // ENABLE_ARTNET

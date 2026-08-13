@@ -16,9 +16,6 @@ struct BleConfigMessage_t {
 void setupBleConfigService();
 bool pollBleConfigService(BleConfigMessage_t& out);
 
-// True once any message (valid or not) has been written to the config characteristic.
-bool hasReceivedBleConfigMessage();
-
 // True while a BLE central is connected.
 bool isBleClientConnected();
 

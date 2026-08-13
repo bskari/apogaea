@@ -1,4 +1,7 @@
 #include "artnetReceiver.hpp"
+
+#if ENABLE_ARTNET
+
 #include "secrets.hpp"
 
 #include <string.h>
@@ -194,3 +197,5 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   udp.write(reply, sizeof(reply));
   udp.endPacket();
 }
+
+#endif // ENABLE_ARTNET

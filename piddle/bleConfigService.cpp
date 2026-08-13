@@ -13,7 +13,6 @@ const char kConfigCharUuid[] = "e0edd272-e8d1-44d6-b594-58ad0382a5bf";
 portMUX_TYPE bleConfigMux = portMUX_INITIALIZER_UNLOCKED;
 BleConfigMessage_t pendingMessage;
 volatile bool messagePending = false;
-volatile bool anyMessageReceived = false;
 volatile bool clientConnected = false;
 
 class ConfigServerCallbacks : public BLEServerCallbacks {
@@ -31,8 +30,6 @@ ConfigServerCallbacks configServerCallbacks;
 
 class ConfigWriteCallbacks : public BLECharacteristicCallbacks {
   void onWrite(BLECharacteristic* characteristic) override {
-    anyMessageReceived = true;
-
     if (characteristic->getLength() != sizeof(BleConfigMessage_t)) {
       Serial.printf(
         "Wrong BLE config message size: %d, expected %d\n",
@@ -74,17 +71,18 @@ void setupBleConfigService() {
   BLEDevice::startAdvertising();
 }
 
-bool hasReceivedBleConfigMessage() {
-  return anyMessageReceived;
-}
-
 bool isBleClientConnected() {
   return clientConnected;
 }
 
 void teardownBleConfigService() {
   BLEDevice::stopAdvertising();
-  BLEDevice::deinit(true); // true = release BT/radio resources
+  // false = do NOT release controller memory. deinit(true) calls
+  // esp_bt_controller_mem_release(ESP_BT_MODE_BTDM), which frees classic-BT memory too and is
+  // irreversible until reboot - that silently breaks the later switch to classic Bluetooth (A2DP),
+  // since it can never re-init its controller. ESP32-A2DP's own btStartMode() already releases the
+  // BLE-only portion (ESP_BT_MODE_BLE) right before it enables classic mode.
+  BLEDevice::deinit(false);
 }
 
 bool pollBleConfigService(BleConfigMessage_t& out) {
