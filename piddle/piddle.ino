@@ -50,11 +50,11 @@ static volatile bool switchToArtnetRequested = false;
 static volatile bool artnetMode = false;
 
 // At boot we only run the BLE config service (BLE and classic BT A2DP can't reliably share the
-// radio - see git history). If nobody configures us over BLE within this window, give up on BLE
-// and switch to Bluetooth audio instead.
+// radio - see git history). If nobody configures us over BLE within this window of boot or the
+// last received config message, give up on BLE and switch to Bluetooth audio instead.
 const uint32_t BLE_CONFIG_TIMEOUT_MS = 30000;
 static bool bleConfigActive = true;
-static uint32_t bleConfigStartMillis = 0;
+static uint32_t bleConfigLastActivityMillis = 0;
 
 // Switching from BLE to classic Bluetooth (A2DP) in the same running process leaves Bluedroid's
 // internal state (e.g. the BTU alarm hash maps, torn down in BTU_ShutDown() when BLE stops) in a
@@ -152,7 +152,7 @@ void setup() {
   } else {
     Serial.println("Setting up BLE config service");
     setupBleConfigService();
-    bleConfigStartMillis = millis();
+    bleConfigLastActivityMillis = millis();
     Serial.println("Done setting up BLE config service");
   }
 
@@ -223,8 +223,8 @@ void loop() {
   }
 
   if (bleConfigActive) {
-    if (!isBleClientConnected() && millis() - bleConfigStartMillis > BLE_CONFIG_TIMEOUT_MS) {
-      Serial.println("No BLE config message received - rebooting into Bluetooth audio");
+    if (!isBleClientConnected() && millis() - bleConfigLastActivityMillis > BLE_CONFIG_TIMEOUT_MS) {
+      Serial.println("Rebooting into Bluetooth audio");
       teardownBleConfigService();
       portENTER_CRITICAL(&configMux);
       rtcSavedConfiguration = configuration;
@@ -235,6 +235,7 @@ void loop() {
     } else {
       BleConfigMessage_t bleMsg;
       if (pollBleConfigService(bleMsg)) {
+        bleConfigLastActivityMillis = millis();
         Serial.printf(
           "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x\n",
           bleMsg.brightness,
