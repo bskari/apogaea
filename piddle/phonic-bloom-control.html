@@ -527,6 +527,19 @@
   var CHAR_UUID = "e0edd272-e8d1-44d6-b594-58ad0382a5bf";
   var STRIP_COUNT = 15;
 
+  // Must stay in sync with BleConfigField in bleConfigService.hpp.
+  var FIELD = {
+    brightness: 0,
+    sensitivity: 1,
+    speed: 2,
+    patternLength: 3,
+    tileOffset: 4,
+    rainbow: 5,
+    normalizeBands: 6,
+    rgbButton: 7,
+    rgb: 8
+  };
+
   var state = {
     brightness: 25,
     sensitivity: 25,
@@ -542,7 +555,9 @@
   var device = null;
   var characteristic = null;
   var writeInFlight = false;
-  var writePending = false;
+  // Field name -> latest value awaiting a write. Each flush sends one field at a time so the
+  // device only ever applies one attribute per BLE write.
+  var pendingFields = {};
   var writeTimer = null;
 
   var statusPill = document.getElementById("statusPill");
@@ -592,7 +607,7 @@
         } else {
           state.rgb &= ~(1 << bit);
         }
-        scheduleWrite();
+        scheduleWrite("rgb");
       });
     }
   }
@@ -613,7 +628,7 @@
       state[key] = Number(input.value);
       readout.textContent = input.value;
       updateSliderFill(input);
-      scheduleWrite();
+      scheduleWrite(key);
     });
   }
   wireSlider("brightness", "brightness");
@@ -626,7 +641,7 @@
     var input = document.getElementById(id);
     input.addEventListener("change", function () {
       state[key] = input.checked ? 1 : 0;
-      scheduleWrite();
+      scheduleWrite(key);
     });
   }
   wireSwitch("rainbow", "rainbow");
@@ -635,44 +650,43 @@
   var testBtn = document.getElementById("testBtn");
   function setTestPressed(pressed) {
     state.rgbButton = pressed ? 1 : 0;
-    scheduleWrite();
+    scheduleWrite("rgbButton");
   }
   testBtn.addEventListener("pointerdown", function () { setTestPressed(true); });
   testBtn.addEventListener("pointerup", function () { setTestPressed(false); });
   testBtn.addEventListener("pointerleave", function () { setTestPressed(false); });
   testBtn.addEventListener("pointercancel", function () { setTestPressed(false); });
 
-  function encodeState() {
-    var buf = new ArrayBuffer(10);
+  function encodeUpdate(field, value) {
+    var buf = new ArrayBuffer(3);
     var view = new DataView(buf);
-    view.setInt8(0, state.brightness);
-    view.setInt8(1, state.sensitivity);
-    view.setInt8(2, state.speed);
-    view.setInt8(3, state.patternLength);
-    view.setInt8(4, state.tileOffset);
-    view.setUint8(5, state.rainbow);
-    view.setUint8(6, state.normalizeBands);
-    view.setUint8(7, state.rgbButton);
-    view.setUint16(8, state.rgb, true);
+    view.setUint8(0, field);
+    view.setUint16(1, value, true);
     return buf;
   }
 
-  function scheduleWrite() {
+  function scheduleWrite(key) {
     if (!characteristic) return;
-    writePending = true;
+    pendingFields[key] = state[key];
     if (writeTimer) return;
     writeTimer = setTimeout(flushWrite, 40);
   }
 
   function flushWrite() {
     writeTimer = null;
+    var keys = Object.keys(pendingFields);
     if (!characteristic || writeInFlight) {
-      if (writePending) writeTimer = setTimeout(flushWrite, 40);
+      if (keys.length) writeTimer = setTimeout(flushWrite, 40);
       return;
     }
-    writePending = false;
+    if (!keys.length) return;
+
+    var key = keys[0];
+    var value = pendingFields[key];
+    delete pendingFields[key];
+
     writeInFlight = true;
-    var payload = encodeState();
+    var payload = encodeUpdate(FIELD[key], value);
     var op = characteristic.writeValueWithoutResponse
       ? characteristic.writeValueWithoutResponse(payload)
       : characteristic.writeValue(payload);
@@ -680,7 +694,7 @@
       console.error("BLE write failed", err);
     }).then(function () {
       writeInFlight = false;
-      if (writePending) writeTimer = setTimeout(flushWrite, 40);
+      if (Object.keys(pendingFields).length) writeTimer = setTimeout(flushWrite, 40);
     });
   }
 
@@ -716,8 +730,6 @@
       connectBtn.dataset.connected = "true";
       connectBtn.disabled = false;
       setPanelsEnabled(true);
-      // Push current UI state to the device once, so the two agree after connecting.
-      scheduleWrite();
     }).catch(function (err) {
       console.error("BLE connect failed", err);
       setStatus("error", err && err.name === "NotFoundError" ? "No device chosen" : "Connection failed");

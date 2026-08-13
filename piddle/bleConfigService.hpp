@@ -1,6 +1,20 @@
 #pragma once
 #include <stdint.h>
 
+// Identifies which single attribute a BLE config write is updating. Values must stay in sync with
+// the FIELD map in phonic-bloom-control.html.
+enum class BleConfigField : uint8_t {
+  Brightness = 0,
+  Sensitivity = 1,
+  Speed = 2,
+  PatternLength = 3,
+  TileOffset = 4,
+  Rainbow = 5,
+  NormalizeBands = 6,
+  RgbButton = 7,
+  Rgb = 8,
+};
+
 struct BleConfigMessage_t {
   int8_t brightness; // from 0 to 100
   int8_t sensitivity; // from 0 to 100
