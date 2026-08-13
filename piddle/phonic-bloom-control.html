@@ -166,6 +166,32 @@
   }
   .connect-btn:disabled { opacity: 0.6; cursor: default; }
 
+  /* ---- Config actions ---- */
+
+  .config-actions {
+    display: flex;
+    gap: 0.6rem;
+  }
+
+  .config-btn {
+    appearance: none;
+    flex: 1;
+    border: 1px solid var(--border);
+    background: var(--panel-raised);
+    color: var(--text);
+    font-size: 0.85rem;
+    font-weight: 600;
+    letter-spacing: 0.01em;
+    padding: 0.65rem 0.8rem;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.05s;
+  }
+  .config-btn:hover { filter: brightness(1.15); }
+  .config-btn:active { transform: scale(0.99); }
+  .config-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .config-btn:disabled { opacity: 0.5; cursor: default; }
+
   .unsupported {
     display: none;
     font-size: 0.85rem;
@@ -387,6 +413,11 @@
   }
   .test-btn:active { filter: brightness(1.25); transform: scale(0.99); }
   .test-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .test-btn[data-active="true"] {
+    border-color: var(--good);
+    background: var(--good-dim);
+    color: #d3ffe4;
+  }
   .test-btn-caption {
     display: block;
     font-size: 0.72rem;
@@ -432,6 +463,11 @@
   </div>
 
   <button class="connect-btn" id="connectBtn" type="button">Connect to Phonic Bloom</button>
+
+  <div class="config-actions">
+    <button class="config-btn" id="saveConfigBtn" type="button">Save config</button>
+    <button class="config-btn" id="loadConfigBtn" type="button" disabled>Load config</button>
+  </div>
 
   <fieldset id="controls" disabled>
     <legend>Look</legend>
@@ -508,8 +544,8 @@
   <fieldset id="testFieldset" disabled>
     <legend>Test</legend>
     <button class="test-btn" id="testBtn" type="button">
-      Hold to light test LEDs
-      <span class="test-btn-caption">Fills every strip red while held</span>
+      <span id="testBtnLabel">Light test LEDs</span>
+      <span class="test-btn-caption" id="testBtnCaption">Fills every strip red until toggled off</span>
     </button>
   </fieldset>
 
@@ -526,6 +562,9 @@
   var SERVICE_UUID = "4ae65b9a-08d7-4f46-a6af-541ff52a4303";
   var CHAR_UUID = "e0edd272-e8d1-44d6-b594-58ad0382a5bf";
   var STRIP_COUNT = 15;
+  var STORAGE_KEY = "phonicBloomConfig";
+  // Fields that make up a saved/restored configuration (excludes the momentary test toggle).
+  var CONFIG_KEYS = ["brightness", "sensitivity", "speed", "patternLength", "tileOffset", "rainbow", "normalizeBands", "rgb"];
 
   // Must stay in sync with BleConfigField in bleConfigService.hpp.
   var FIELD = {
@@ -564,6 +603,8 @@
   var statusText = document.getElementById("statusText");
   var connectBtn = document.getElementById("connectBtn");
   var unsupported = document.getElementById("unsupported");
+  var saveConfigBtn = document.getElementById("saveConfigBtn");
+  var loadConfigBtn = document.getElementById("loadConfigBtn");
   var panels = [
     document.getElementById("controls"),
     document.getElementById("switches"),
@@ -584,6 +625,7 @@
 
   function setPanelsEnabled(enabled) {
     panels.forEach(function (p) { p.disabled = !enabled; });
+    loadConfigBtn.disabled = !enabled;
   }
 
   function buildStripGrid() {
@@ -648,14 +690,63 @@
   wireSwitch("normalizeBands", "normalizeBands");
 
   var testBtn = document.getElementById("testBtn");
-  function setTestPressed(pressed) {
-    state.rgbButton = pressed ? 1 : 0;
+  var testBtnLabel = document.getElementById("testBtnLabel");
+  var testBtnCaption = document.getElementById("testBtnCaption");
+  function setTestActive(active) {
+    state.rgbButton = active ? 1 : 0;
+    testBtn.dataset.active = active ? "true" : "false";
+    testBtnLabel.textContent = active ? "Stop test LEDs" : "Light test LEDs";
+    testBtnCaption.textContent = active ? "Every strip is lit red" : "Fills every strip red until toggled off";
     scheduleWrite("rgbButton");
   }
-  testBtn.addEventListener("pointerdown", function () { setTestPressed(true); });
-  testBtn.addEventListener("pointerup", function () { setTestPressed(false); });
-  testBtn.addEventListener("pointerleave", function () { setTestPressed(false); });
-  testBtn.addEventListener("pointercancel", function () { setTestPressed(false); });
+  testBtn.addEventListener("click", function () {
+    setTestActive(state.rgbButton === 0);
+  });
+
+  function applyStateToUi() {
+    CONFIG_KEYS.forEach(function (key) {
+      if (key === "rgb") return;
+      var input = document.getElementById(key);
+      if (input && input.type === "range") {
+        input.value = String(state[key]);
+        var readout = document.getElementById(key + "Value");
+        if (readout) readout.textContent = String(state[key]);
+        updateSliderFill(input);
+      } else if (input && input.type === "checkbox") {
+        input.checked = !!state[key];
+      }
+      scheduleWrite(key);
+    });
+
+    var stripInputs = document.querySelectorAll("#stripGrid input[type=checkbox]");
+    stripInputs.forEach(function (input) {
+      var bit = Number(input.dataset.bit);
+      input.checked = (state.rgb & (1 << bit)) !== 0;
+    });
+    scheduleWrite("rgb");
+  }
+
+  saveConfigBtn.addEventListener("click", function () {
+    var toSave = {};
+    CONFIG_KEYS.forEach(function (key) { toSave[key] = state[key]; });
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(toSave));
+  });
+
+  loadConfigBtn.addEventListener("click", function () {
+    var raw = localStorage.getItem(STORAGE_KEY);
+    if (!raw) return;
+    var loaded;
+    try {
+      loaded = JSON.parse(raw);
+    } catch (err) {
+      console.error("Failed to parse saved config", err);
+      return;
+    }
+    CONFIG_KEYS.forEach(function (key) {
+      if (typeof loaded[key] === "number") state[key] = loaded[key];
+    });
+    applyStateToUi();
+  });
 
   function encodeUpdate(field, value) {
     var buf = new ArrayBuffer(3);
