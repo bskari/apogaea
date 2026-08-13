@@ -1,0 +1,744 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1">
+<title>Phonic Bloom Control</title>
+<style>
+  :root {
+    --bg: #100e0c;
+    --panel: #1a1613;
+    --panel-raised: #221d18;
+    --border: #362e26;
+    --text: #f2ebe1;
+    --text-dim: #a89a89;
+    --text-faint: #6f6353;
+    --accent: #ff8a3d;
+    --accent-dim: #7a4423;
+    --accent-glow: rgba(255, 138, 61, 0.35);
+    --good: #5ecb85;
+    --good-dim: #2a4234;
+    --bad: #e2604f;
+    --bad-dim: #422a26;
+    --focus: #ffcb9a;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    background: var(--bg);
+    color: var(--text);
+  }
+
+  body {
+    margin: 0;
+    min-height: 100vh;
+    font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
+    -webkit-tap-highlight-color: transparent;
+    background:
+      radial-gradient(ellipse 900px 500px at 50% -10%, rgba(255, 138, 61, 0.08), transparent 60%),
+      var(--bg);
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    * { animation-duration: 0.001ms !important; transition-duration: 0.001ms !important; }
+  }
+
+  .page {
+    max-width: 30rem;
+    margin: 0 auto;
+    padding: 1.25rem 1.1rem 3rem;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+
+  /* ---- Header ---- */
+
+  header {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-bottom: 0.9rem;
+    border-bottom: 1px solid var(--border);
+  }
+
+  .brand {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+  }
+
+  .brand-eyebrow {
+    font-size: 0.68rem;
+    letter-spacing: 0.14em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+    font-weight: 600;
+  }
+
+  .brand-name {
+    font-size: 1.3rem;
+    font-weight: 700;
+    letter-spacing: -0.01em;
+    text-wrap: balance;
+  }
+
+  .status-pill {
+    flex-shrink: 0;
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.65rem;
+    border-radius: 999px;
+    font-size: 0.72rem;
+    font-weight: 600;
+    letter-spacing: 0.02em;
+    border: 1px solid var(--border);
+    background: var(--panel);
+    color: var(--text-dim);
+    white-space: nowrap;
+  }
+
+  .status-dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--text-faint);
+    box-shadow: none;
+    transition: background 0.2s, box-shadow 0.2s;
+  }
+
+  .status-pill[data-state="connected"] {
+    color: var(--good);
+    border-color: var(--good-dim);
+  }
+  .status-pill[data-state="connected"] .status-dot {
+    background: var(--good);
+    box-shadow: 0 0 8px var(--good);
+  }
+
+  .status-pill[data-state="connecting"] {
+    color: var(--accent);
+    border-color: var(--accent-dim);
+  }
+  .status-pill[data-state="connecting"] .status-dot {
+    background: var(--accent);
+    box-shadow: 0 0 8px var(--accent-glow);
+    animation: pulse 1s ease-in-out infinite;
+  }
+
+  .status-pill[data-state="error"] {
+    color: var(--bad);
+    border-color: var(--bad-dim);
+  }
+  .status-pill[data-state="error"] .status-dot { background: var(--bad); }
+
+  @keyframes pulse {
+    0%, 100% { opacity: 1; }
+    50% { opacity: 0.35; }
+  }
+
+  /* ---- Connect button ---- */
+
+  .connect-btn {
+    appearance: none;
+    border: 1px solid var(--accent-dim);
+    background: var(--accent);
+    color: #1a0f04;
+    font-size: 0.95rem;
+    font-weight: 700;
+    letter-spacing: 0.01em;
+    padding: 0.85rem 1rem;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    transition: filter 0.15s, transform 0.05s;
+  }
+  .connect-btn:hover { filter: brightness(1.08); }
+  .connect-btn:active { transform: scale(0.99); }
+  .connect-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .connect-btn[data-connected="true"] {
+    background: var(--panel-raised);
+    color: var(--text);
+    border-color: var(--border);
+  }
+  .connect-btn:disabled { opacity: 0.6; cursor: default; }
+
+  .unsupported {
+    display: none;
+    font-size: 0.85rem;
+    line-height: 1.5;
+    color: var(--bad);
+    background: var(--bad-dim);
+    border: 1px solid var(--bad);
+    border-radius: 0.6rem;
+    padding: 0.8rem 0.9rem;
+  }
+  .unsupported.show { display: block; }
+
+  /* ---- Panels ---- */
+
+  fieldset {
+    border: 1px solid var(--border);
+    background: var(--panel);
+    border-radius: 0.75rem;
+    padding: 1rem 1rem 1.1rem;
+    margin: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 1.1rem;
+  }
+
+  legend {
+    padding: 0 0.4rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    letter-spacing: 0.13em;
+    text-transform: uppercase;
+    color: var(--text-faint);
+  }
+
+  fieldset:disabled { opacity: 0.45; }
+
+  /* ---- Sliders ---- */
+
+  .control-row {
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+  }
+
+  .control-label-row {
+    display: flex;
+    justify-content: space-between;
+    align-items: baseline;
+    font-size: 0.88rem;
+  }
+
+  .control-label-row label { font-weight: 600; }
+
+  .control-value {
+    font-variant-numeric: tabular-nums;
+    font-family: ui-monospace, "SF Mono", "Cascadia Code", Menlo, Consolas, monospace;
+    color: var(--accent);
+    font-size: 0.85rem;
+    min-width: 2.4em;
+    text-align: right;
+  }
+
+  input[type="range"] {
+    appearance: none;
+    -webkit-appearance: none;
+    width: 100%;
+    height: 1.6rem;
+    background: transparent;
+    margin: 0;
+  }
+  input[type="range"]::-webkit-slider-runnable-track {
+    height: 0.35rem;
+    border-radius: 999px;
+    background: linear-gradient(to right, var(--accent) 0%, var(--accent) var(--fill, 0%), var(--panel-raised) var(--fill, 0%), var(--panel-raised) 100%);
+  }
+  input[type="range"]::-moz-range-track {
+    height: 0.35rem;
+    border-radius: 999px;
+    background: var(--panel-raised);
+  }
+  input[type="range"]::-moz-range-progress {
+    height: 0.35rem;
+    border-radius: 999px;
+    background: var(--accent);
+  }
+  input[type="range"]::-webkit-slider-thumb {
+    -webkit-appearance: none;
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 999px;
+    background: var(--focus);
+    border: 2px solid var(--bg);
+    margin-top: -0.475rem;
+    box-shadow: 0 0 0 1px var(--accent-dim);
+  }
+  input[type="range"]::-moz-range-thumb {
+    width: 1.3rem;
+    height: 1.3rem;
+    border-radius: 999px;
+    background: var(--focus);
+    border: 2px solid var(--bg);
+    box-shadow: 0 0 0 1px var(--accent-dim);
+  }
+  input[type="range"]:focus-visible::-webkit-slider-thumb { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---- Toggles ---- */
+
+  .toggle-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+  }
+
+  .toggle-row span { font-size: 0.88rem; font-weight: 600; }
+
+  .switch {
+    position: relative;
+    width: 2.75rem;
+    height: 1.55rem;
+    flex-shrink: 0;
+  }
+  .switch input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .switch-track {
+    position: absolute;
+    inset: 0;
+    background: var(--panel-raised);
+    border: 1px solid var(--border);
+    border-radius: 999px;
+    transition: background 0.15s, border-color 0.15s;
+  }
+  .switch-thumb {
+    position: absolute;
+    top: 0.15rem;
+    left: 0.15rem;
+    width: 1.1rem;
+    height: 1.1rem;
+    border-radius: 999px;
+    background: var(--text-dim);
+    transition: transform 0.15s, background 0.15s;
+  }
+  .switch input:checked ~ .switch-track {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+  }
+  .switch input:checked ~ .switch-thumb {
+    transform: translateX(1.2rem);
+    background: var(--accent);
+  }
+  .switch input:focus-visible ~ .switch-track { outline: 2px solid var(--focus); outline-offset: 2px; }
+
+  /* ---- Strip grid ---- */
+
+  .strip-grid {
+    display: grid;
+    grid-template-columns: repeat(5, 1fr);
+    gap: 0.4rem;
+  }
+
+  .strip-chip {
+    position: relative;
+  }
+  .strip-chip input {
+    position: absolute;
+    inset: 0;
+    opacity: 0;
+    margin: 0;
+    cursor: pointer;
+  }
+  .strip-chip-face {
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    height: 2.4rem;
+    border-radius: 0.5rem;
+    border: 1px solid var(--border);
+    background: var(--panel-raised);
+    color: var(--text-dim);
+    font-size: 0.75rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    transition: background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .strip-chip input:checked ~ .strip-chip-face {
+    background: var(--accent-dim);
+    border-color: var(--accent);
+    color: var(--focus);
+  }
+  .strip-chip input:focus-visible ~ .strip-chip-face { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .strip-grid-caption {
+    font-size: 0.76rem;
+    color: var(--text-faint);
+    line-height: 1.4;
+  }
+
+  /* ---- Test button ---- */
+
+  .test-btn {
+    appearance: none;
+    width: 100%;
+    border: 1px solid var(--bad);
+    background: var(--bad-dim);
+    color: #ffd9d2;
+    font-size: 0.9rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    padding: 0.9rem 1rem;
+    border-radius: 0.6rem;
+    cursor: pointer;
+    user-select: none;
+    touch-action: manipulation;
+    transition: filter 0.1s, transform 0.05s;
+  }
+  .test-btn:active { filter: brightness(1.25); transform: scale(0.99); }
+  .test-btn:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+  .test-btn-caption {
+    display: block;
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--text-faint);
+    margin-top: 0.35rem;
+    letter-spacing: 0;
+    text-transform: none;
+  }
+
+  footer {
+    text-align: center;
+    font-size: 0.72rem;
+    color: var(--text-faint);
+    line-height: 1.6;
+    padding-top: 0.4rem;
+  }
+  footer code {
+    font-family: ui-monospace, "SF Mono", Menlo, Consolas, monospace;
+    background: var(--panel);
+    border: 1px solid var(--border);
+    border-radius: 0.3rem;
+    padding: 0.05rem 0.35rem;
+  }
+</style>
+</head>
+<body>
+
+<div class="page">
+  <header>
+    <div class="brand">
+      <div class="brand-eyebrow">BLE Config</div>
+      <div class="brand-name">Phonic Bloom</div>
+    </div>
+    <div class="status-pill" id="statusPill" data-state="disconnected">
+      <span class="status-dot"></span>
+      <span id="statusText">Disconnected</span>
+    </div>
+  </header>
+
+  <div class="unsupported" id="unsupported">
+    This browser doesn't support Web Bluetooth. Open this page in Chrome (Android or desktop) &mdash; Safari and Firefox can't connect.
+  </div>
+
+  <button class="connect-btn" id="connectBtn" type="button">Connect to Phonic Bloom</button>
+
+  <fieldset id="controls" disabled>
+    <legend>Look</legend>
+
+    <div class="control-row">
+      <div class="control-label-row">
+        <label for="brightness">Brightness</label>
+        <span class="control-value" id="brightnessValue">25</span>
+      </div>
+      <input type="range" id="brightness" min="0" max="100" value="25" />
+    </div>
+
+    <div class="control-row">
+      <div class="control-label-row">
+        <label for="sensitivity">Sensitivity</label>
+        <span class="control-value" id="sensitivityValue">25</span>
+      </div>
+      <input type="range" id="sensitivity" min="0" max="100" value="25" />
+    </div>
+
+    <div class="control-row">
+      <div class="control-label-row">
+        <label for="speed">Speed</label>
+        <span class="control-value" id="speedValue">60</span>
+      </div>
+      <input type="range" id="speed" min="0" max="100" value="60" />
+    </div>
+
+    <div class="control-row">
+      <div class="control-label-row">
+        <label for="patternLength">Pattern length</label>
+        <span class="control-value" id="patternLengthValue">70</span>
+      </div>
+      <input type="range" id="patternLength" min="0" max="100" value="70" />
+    </div>
+
+    <div class="control-row">
+      <div class="control-label-row">
+        <label for="tileOffset">Tile offset</label>
+        <span class="control-value" id="tileOffsetValue">0</span>
+      </div>
+      <input type="range" id="tileOffset" min="0" max="100" value="0" />
+    </div>
+  </fieldset>
+
+  <fieldset id="switches" disabled>
+    <legend>Modes</legend>
+
+    <div class="toggle-row">
+      <span>Rainbow</span>
+      <label class="switch">
+        <input type="checkbox" id="rainbow" />
+        <span class="switch-track"></span>
+        <span class="switch-thumb"></span>
+      </label>
+    </div>
+
+    <div class="toggle-row">
+      <span>Normalize bands</span>
+      <label class="switch">
+        <input type="checkbox" id="normalizeBands" checked />
+        <span class="switch-track"></span>
+        <span class="switch-thumb"></span>
+      </label>
+    </div>
+  </fieldset>
+
+  <fieldset id="stripFieldset" disabled>
+    <legend>RGB strips</legend>
+    <div class="strip-grid" id="stripGrid"></div>
+    <p class="strip-grid-caption">Highlight a strip if it's wired RGB instead of GRB, to swap its red/green channels back.</p>
+  </fieldset>
+
+  <fieldset id="testFieldset" disabled>
+    <legend>Test</legend>
+    <button class="test-btn" id="testBtn" type="button">
+      Hold to light test LEDs
+      <span class="test-btn-caption">Fills every strip red while held</span>
+    </button>
+  </fieldset>
+
+  <footer>
+    Web Bluetooth requires Chrome and a secure page. Add this page to your home screen (browser menu &rarr; <em>Add to Home screen</em>) to launch it like an app &mdash; it still needs Chrome and a live connection, it's not an offline copy.<br />
+    Service <code>4ae65b9a&hellip;</code>
+  </footer>
+</div>
+
+<script>
+(function () {
+  "use strict";
+
+  var SERVICE_UUID = "4ae65b9a-08d7-4f46-a6af-541ff52a4303";
+  var CHAR_UUID = "e0edd272-e8d1-44d6-b594-58ad0382a5bf";
+  var STRIP_COUNT = 15;
+
+  var state = {
+    brightness: 25,
+    sensitivity: 25,
+    speed: 60,
+    patternLength: 70,
+    tileOffset: 0,
+    rainbow: 0,
+    normalizeBands: 1,
+    rgbButton: 0,
+    rgb: 0
+  };
+
+  var device = null;
+  var characteristic = null;
+  var writeInFlight = false;
+  var writePending = false;
+  var writeTimer = null;
+
+  var statusPill = document.getElementById("statusPill");
+  var statusText = document.getElementById("statusText");
+  var connectBtn = document.getElementById("connectBtn");
+  var unsupported = document.getElementById("unsupported");
+  var panels = [
+    document.getElementById("controls"),
+    document.getElementById("switches"),
+    document.getElementById("stripFieldset"),
+    document.getElementById("testFieldset")
+  ];
+
+  if (!navigator.bluetooth) {
+    unsupported.classList.add("show");
+    connectBtn.disabled = true;
+    connectBtn.textContent = "Web Bluetooth unavailable";
+  }
+
+  function setStatus(stateName, label) {
+    statusPill.dataset.state = stateName;
+    statusText.textContent = label;
+  }
+
+  function setPanelsEnabled(enabled) {
+    panels.forEach(function (p) { p.disabled = !enabled; });
+  }
+
+  function buildStripGrid() {
+    var grid = document.getElementById("stripGrid");
+    for (var i = 0; i < STRIP_COUNT; i++) {
+      var wrap = document.createElement("label");
+      wrap.className = "strip-chip";
+      var input = document.createElement("input");
+      input.type = "checkbox";
+      input.dataset.bit = String(i);
+      var face = document.createElement("span");
+      face.className = "strip-chip-face";
+      face.textContent = String(i + 1);
+      wrap.appendChild(input);
+      wrap.appendChild(face);
+      grid.appendChild(wrap);
+      input.addEventListener("change", function (evt) {
+        var bit = Number(evt.target.dataset.bit);
+        if (evt.target.checked) {
+          state.rgb |= (1 << bit);
+        } else {
+          state.rgb &= ~(1 << bit);
+        }
+        scheduleWrite();
+      });
+    }
+  }
+  buildStripGrid();
+
+  function updateSliderFill(input) {
+    var min = Number(input.min || 0);
+    var max = Number(input.max || 100);
+    var pct = ((Number(input.value) - min) / (max - min)) * 100;
+    input.style.setProperty("--fill", pct + "%");
+  }
+
+  function wireSlider(id, key) {
+    var input = document.getElementById(id);
+    var readout = document.getElementById(id + "Value");
+    updateSliderFill(input);
+    input.addEventListener("input", function () {
+      state[key] = Number(input.value);
+      readout.textContent = input.value;
+      updateSliderFill(input);
+      scheduleWrite();
+    });
+  }
+  wireSlider("brightness", "brightness");
+  wireSlider("sensitivity", "sensitivity");
+  wireSlider("speed", "speed");
+  wireSlider("patternLength", "patternLength");
+  wireSlider("tileOffset", "tileOffset");
+
+  function wireSwitch(id, key) {
+    var input = document.getElementById(id);
+    input.addEventListener("change", function () {
+      state[key] = input.checked ? 1 : 0;
+      scheduleWrite();
+    });
+  }
+  wireSwitch("rainbow", "rainbow");
+  wireSwitch("normalizeBands", "normalizeBands");
+
+  var testBtn = document.getElementById("testBtn");
+  function setTestPressed(pressed) {
+    state.rgbButton = pressed ? 1 : 0;
+    scheduleWrite();
+  }
+  testBtn.addEventListener("pointerdown", function () { setTestPressed(true); });
+  testBtn.addEventListener("pointerup", function () { setTestPressed(false); });
+  testBtn.addEventListener("pointerleave", function () { setTestPressed(false); });
+  testBtn.addEventListener("pointercancel", function () { setTestPressed(false); });
+
+  function encodeState() {
+    var buf = new ArrayBuffer(10);
+    var view = new DataView(buf);
+    view.setInt8(0, state.brightness);
+    view.setInt8(1, state.sensitivity);
+    view.setInt8(2, state.speed);
+    view.setInt8(3, state.patternLength);
+    view.setInt8(4, state.tileOffset);
+    view.setUint8(5, state.rainbow);
+    view.setUint8(6, state.normalizeBands);
+    view.setUint8(7, state.rgbButton);
+    view.setUint16(8, state.rgb, true);
+    return buf;
+  }
+
+  function scheduleWrite() {
+    if (!characteristic) return;
+    writePending = true;
+    if (writeTimer) return;
+    writeTimer = setTimeout(flushWrite, 40);
+  }
+
+  function flushWrite() {
+    writeTimer = null;
+    if (!characteristic || writeInFlight) {
+      if (writePending) writeTimer = setTimeout(flushWrite, 40);
+      return;
+    }
+    writePending = false;
+    writeInFlight = true;
+    var payload = encodeState();
+    var op = characteristic.writeValueWithoutResponse
+      ? characteristic.writeValueWithoutResponse(payload)
+      : characteristic.writeValue(payload);
+    op.catch(function (err) {
+      console.error("BLE write failed", err);
+    }).then(function () {
+      writeInFlight = false;
+      if (writePending) writeTimer = setTimeout(flushWrite, 40);
+    });
+  }
+
+  function onDisconnected() {
+    characteristic = null;
+    device = null;
+    setStatus("disconnected", "Disconnected");
+    setPanelsEnabled(false);
+    connectBtn.textContent = "Connect to Phonic Bloom";
+    connectBtn.dataset.connected = "false";
+    connectBtn.disabled = false;
+  }
+
+  function connect() {
+    setStatus("connecting", "Requesting device…");
+    connectBtn.disabled = true;
+
+    navigator.bluetooth.requestDevice({
+      filters: [{ services: [SERVICE_UUID] }]
+    }).then(function (d) {
+      device = d;
+      device.addEventListener("gattserverdisconnected", onDisconnected);
+      setStatus("connecting", "Connecting…");
+      return device.gatt.connect();
+    }).then(function (server) {
+      return server.getPrimaryService(SERVICE_UUID);
+    }).then(function (service) {
+      return service.getCharacteristic(CHAR_UUID);
+    }).then(function (ch) {
+      characteristic = ch;
+      setStatus("connected", device.name || "Connected");
+      connectBtn.textContent = "Disconnect";
+      connectBtn.dataset.connected = "true";
+      connectBtn.disabled = false;
+      setPanelsEnabled(true);
+      // Push current UI state to the device once, so the two agree after connecting.
+      scheduleWrite();
+    }).catch(function (err) {
+      console.error("BLE connect failed", err);
+      setStatus("error", err && err.name === "NotFoundError" ? "No device chosen" : "Connection failed");
+      connectBtn.disabled = false;
+      connectBtn.textContent = "Connect to Phonic Bloom";
+      setTimeout(function () {
+        if (!characteristic) setStatus("disconnected", "Disconnected");
+      }, 2200);
+    });
+  }
+
+  connectBtn.addEventListener("click", function () {
+    if (characteristic && device) {
+      device.gatt.disconnect();
+      onDisconnected();
+      return;
+    }
+    connect();
+  });
+})();
+</script>
+
+</body>
+</html>
