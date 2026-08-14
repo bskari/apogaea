@@ -33,6 +33,7 @@ struct Configuration_t {
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or GRB
   uint8_t patternLength; // number of LEDs per repeating tile (5..LEDS_PER_STRIP)
   uint8_t tileOffset;   // how many history positions each successive tile shifts (0 = identical copies)
+  uint8_t showConverterLedsSwitch; // =1 if switch ON and =0 if OFF
 };
 Configuration_t configuration;
 
@@ -126,6 +127,7 @@ void setup() {
   configuration.rgb = 0;
   configuration.patternLength = DEFAULT_PATTERN_LENGTH;
   configuration.tileOffset = DEFAULT_TILE_OFFSET;
+  configuration.showConverterLedsSwitch = DEFAULT_SHOW_CONVERTER_LEDS;
 
   if (bootIntoBluetoothAudio) {
     // Restore whatever was configured over BLE before we rebooted into Bluetooth audio mode.
@@ -237,14 +239,15 @@ void loop() {
       if (pollBleConfigService(bleMsg)) {
         bleConfigLastActivityMillis = millis();
         Serial.printf(
-          "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x\n",
+          "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x cnv:%d\n",
           bleMsg.brightness,
           bleMsg.sensitivity,
           bleMsg.speed,
           bleMsg.rainbow,
           bleMsg.normalizeBands,
           bleMsg.rgbButton,
-          bleMsg.rgb
+          bleMsg.rgb,
+          bleMsg.showConverterLeds
         );
         portENTER_CRITICAL(&configMux);
         configuration.brightnessSlider = bleMsg.brightness;
@@ -256,6 +259,7 @@ void loop() {
         configuration.normalizeBandsSwitch = bleMsg.normalizeBands;
         configuration.rgbButton = bleMsg.rgbButton;
         configuration.rgb = bleMsg.rgb;
+        configuration.showConverterLedsSwitch = bleMsg.showConverterLeds;
         portEXIT_CRITICAL(&configMux);
       }
     }
@@ -292,11 +296,11 @@ void displayLedsFunction(void*) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
       }
       swapChannels(configuration.rgb);
-      #if ! SHOW_CONVERTER_LEDS
+      if (!configuration.showConverterLedsSwitch) {
         for (int i = 0; i < STRIP_COUNT; ++i) {
           leds[i][0] = CRGB::Black;
         }
-      #endif
+      }
       driver.showPixels();
       swapChannels(configuration.rgb);
       xSemaphoreGive(artnetPixelsMutex);
@@ -324,7 +328,8 @@ void displayLedsFunction(void*) {
           configuration.speedSlider,
           configuration.patternLength,
           configuration.tileOffset,
-          configuration.rgb);
+          configuration.rgb,
+          configuration.showConverterLedsSwitch);
       }
 
       if (Serial.available() > 0) {

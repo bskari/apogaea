@@ -22,8 +22,6 @@
 #  define LOG_TIMING 0
 #endif
 
-#define SHOW_CONVERTER_LEDS 1
-
 static const int I2S_SAMPLE_RATE_HZ = 44100; // Sample rate of the I2S microphone
 static const int MAX_I2S_BUFFER_LENGTH = 512;
 
@@ -312,7 +310,8 @@ void displaySpectrumAnalyzer(
   const uint8_t speed_p,
   const int patternLength,
   const int tileOffset,
-  const uint16_t rgb
+  const uint16_t rgb,
+  const bool showConverterLeds
 ) {
   #if LOG_TIMING
     const decltype(millis()) logTime_ms = 5000;
@@ -399,24 +398,22 @@ void displaySpectrumAnalyzer(
 
   const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
 
-  #if SHOW_CONVERTER_LEDS
-    #warning "Showing converter LEDs"
+  int diodeBrightness = 255;
+  if (showConverterLeds) {
     CRGB firstLeds[STRIP_COUNT];
     for (int i = 0; i < STRIP_COUNT; ++i) {
       firstLeds[i] = leds[i][0];
     };
     // The first LED in each strip is powered through a 1N4148 diode. Limit
     // brightness so it stays under 50 mA.
-    const int diodeBrightness = min(calculate_max_brightness_for_power_vmA(
+    diodeBrightness = min(calculate_max_brightness_for_power_vmA(
       firstLeds,
       STRIP_COUNT,
       255,
       5,
       50
     ), static_cast<unsigned char>(32));
-  #else
-    const int diodeBrightness = 255;
-  #endif
+  }
   // My voltage converter can only output 10A, so limit to half of that
   const int max_ma = 5000;
   const int limitedBrightness = calculate_max_brightness_for_power_vmA(
@@ -429,12 +426,11 @@ void displaySpectrumAnalyzer(
   brightness = min(diodeBrightness, limitedBrightness);
   driver.setBrightness(brightness);
 
-  #if ! SHOW_CONVERTER_LEDS
-    #warning "Hiding converter LEDs"
+  if (!showConverterLeds) {
     for (int i = 0; i < STRIP_COUNT; ++i) {
       leds[i][0] = CRGB::Black;
     }
-  #endif
+  }
 
   #if LOG_TIMING
     part_us = micros();

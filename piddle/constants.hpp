@@ -5,12 +5,6 @@
 #  define LED_BUILTIN 2
 #endif
 
-// The first LED in each strip in `leds` is a converter LED and is physically placed on the circuit
-// board. It's nice for testing, but annoying when run live. Enable or disable them here.
-#ifndef SHOW_CONVERTER_LEDS
-#  define SHOW_CONVERTER_LEDS 0
-#endif
-
 // ArtNet/WiFi pulls in a lot of extra RAM (WiFi stack) which is suspected of starving the BT/BLE
 // stack, causing it to fail to advertise after switching to Bluetooth audio. Disable it here to
 // test that theory, or if it's just not needed.
@@ -92,3 +86,6 @@ const int DEFAULT_SPEED = 60;
 const int DEFAULT_SENSITIVITY = 25;
 const int DEFAULT_PATTERN_LENGTH = 70;
 const int DEFAULT_TILE_OFFSET = 0;
+// The first LED in each strip in `leds` is a converter LED and is physically placed on the circuit
+// board. It's nice for testing, but annoying when run live. Toggled at runtime via BLE config.
+const bool DEFAULT_SHOW_CONVERTER_LEDS = false;
