@@ -384,7 +384,11 @@ void displaySpectrumAnalyzer(
   // Minimum divisor. The output from the FFT is squared, and we could sqrt it, but that's slow and
   // unnecessary, so just square this number. Lower this number to increase sensitivity.
   // 50% = 4000
-  const float minimumDivisor = square((130 - sensitivity_p) * 50);
+  float minimumDivisor = square((130 - sensitivity_p) * 50);
+  if (btActive) {
+    // BT audio samples tend to run much hotter than the mic input, so raise the floor to compensate.
+    minimumDivisor *= 10000;
+  }
   normalizeTo0_1(output, SAMPLE_COUNT, minimumDivisor);
   #if LOG_TIMING
     const auto compute_us = micros() - part_us;
