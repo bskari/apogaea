@@ -13,6 +13,11 @@
 #  warning "If it plays the converter animation then freezes, try 3.7.8."
 #endif
 
+#if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 1, 2)
+#  warning "I have only tested with ESP 3.1.2, newer versions crash on BLE config."
+// FWIW, 3.1.2 also crashes on classib Bluetooth disconnect
+#endif
+
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
 #include "bleConfigService.hpp"
 #include "bluetoothAudio.hpp"
