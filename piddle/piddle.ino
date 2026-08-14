@@ -150,6 +150,7 @@ void setup() {
     bootIntoBluetoothAudio = false;
     bleConfigActive = false;
     Serial.println("Booting straight into Bluetooth audio (BLE config skipped this boot)");
+    configuration.rgbButton = 0;
     setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
   } else {
     Serial.println("Setting up BLE config service");
@@ -332,12 +333,12 @@ void displayLedsFunction(void*) {
           configuration.showConverterLedsSwitch);
       }
 
-      if (Serial.available() > 0) {
-        logDebug = true;
-        while (Serial.available() > 0) {
-          Serial.read();
-        }
-      }
+      //if (Serial.available() > 0) {
+      //  logDebug = true;
+      //  while (Serial.available() > 0) {
+      //    Serial.read();
+      //  }
+      //}
     }
     // Keep the watchdog happy
     delay(1);
