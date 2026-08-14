@@ -796,6 +796,7 @@
       if (typeof loaded[key] === "number") state[key] = loaded[key];
     });
     applyStateToUi();
+    showToast("Config loaded");
   });
 
   function encodeUpdate(field, value) {
