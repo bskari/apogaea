@@ -6,6 +6,7 @@
 
 
 #include <FastLED.h>
+#include <Preferences.h>
 
 // Tested on FastLED 3.7.8, other versions crash
 #if FASTLED_VERSION != 3007008
@@ -52,21 +53,24 @@ TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
 I2SClocklessLedDriver driver;
 
-static volatile bool switchToArtnetRequested = false;
 static volatile bool artnetMode = false;
 
-// At boot we only run the BLE config service (BLE and classic BT A2DP can't reliably share the
-// radio - see git history). If nobody configures us over BLE within this window of boot or the
-// last received config message, give up on BLE and switch to Bluetooth audio instead.
-const uint32_t BLE_CONFIG_TIMEOUT_MS = 30000;
-static bool bleConfigActive = true;
+// BLE config mode is only entered on request (button press, see buttonInterrupt/bleConfigRequested
+// below) rather than on every boot, so normally we boot straight into Bluetooth audio. If nobody
+// configures us over BLE within this window of boot or the last received config message, give up
+// on BLE and reboot back into Bluetooth audio instead.
+const uint32_t BLE_CONFIG_TIMEOUT_MS = 60000;
+static bool bleConfigActive = false;
 static uint32_t bleConfigLastActivityMillis = 0;
+static volatile bool bleConfigRequested = false;
 
 // Switching from BLE to classic Bluetooth (A2DP) in the same running process leaves Bluedroid's
 // internal state (e.g. the BTU alarm hash maps, torn down in BTU_ShutDown() when BLE stops) in a
 // state that isn't reliably rebuilt for the second stack - it crashes with
 // "assert failed: hash_map_set" during AVRC service discovery on connect. Rebooting into Bluetooth
-// audio mode instead gives Bluedroid a clean, single-stack boot.
+// audio mode instead gives Bluedroid a clean, single-stack boot. We use the same approach for
+// entering BLE config mode (triggered by the boot button, see buttonInterrupt below) so that it
+// also always gets a clean, single-stack boot.
 //
 // RTC_NOINIT_ATTR (not RTC_DATA_ATTR!) - RTC_DATA_ATTR variables are re-initialized from their
 // flash-stored initializer on every boot, including a plain esp_restart(), so a value set just
@@ -74,10 +78,73 @@ static uint32_t bleConfigLastActivityMillis = 0;
 // completely untouched by the loader, so it actually survives. The tradeoff is it's uninitialized
 // garbage on a true power-on, so we only trust it when esp_reset_reason() confirms this was our
 // own ESP.restart() call (see setup()).
-RTC_NOINIT_ATTR static bool bootIntoBluetoothAudio;
-// Snapshot of `configuration` taken right before the restart above, so settings from BLE aren't
-// lost when we reboot into Bluetooth audio mode.
+RTC_NOINIT_ATTR static bool bootIntoBleConfig;
+// Snapshot of `configuration` taken right before the restarts above, so settings aren't lost
+// across the reboot into BLE config mode or back out of it.
 RTC_NOINIT_ATTR static Configuration_t rtcSavedConfiguration;
+
+Preferences preferences;
+// Debounces Preferences (NVS) writes while the BLE config page is actively streaming slider
+// updates (every ~40ms while dragging) - we only persist once activity settles, not on every
+// single field update. pendingSaveFields accumulates (1 << BleConfigField) bits across polls
+// during the debounce window, so the eventual save only rewrites the fields that actually
+// changed instead of every field.
+static volatile uint16_t pendingSaveFields = 0;
+static uint32_t lastConfigChangeMillis = 0;
+const uint32_t CONFIG_SAVE_DEBOUNCE_MS = 1000;
+
+void loadConfigFromPreferences(Configuration_t& config) {
+  preferences.begin("piddle", true);
+  config.brightnessSlider = preferences.getChar("bri", config.brightnessSlider);
+  config.sensitivitySlider = preferences.getChar("sen", config.sensitivitySlider);
+  config.speedSlider = preferences.getChar("spd", config.speedSlider);
+  config.rainbowSwitch = preferences.getUChar("rbw", config.rainbowSwitch);
+  config.normalizeBandsSwitch = preferences.getUChar("nor", config.normalizeBandsSwitch);
+  config.rgb = preferences.getUShort("rgb", config.rgb);
+  config.patternLength = preferences.getUChar("pat", config.patternLength);
+  config.tileOffset = preferences.getUChar("off", config.tileOffset);
+  config.showConverterLedsSwitch = preferences.getUChar("cnv", config.showConverterLedsSwitch);
+  preferences.end();
+}
+
+// Writes only the fields whose bit is set in `fields` (1 << BleConfigField), so a slider drag only
+// ever rewrites the one NVS key it touched rather than the whole configuration.
+void saveConfigFieldsToPreferences(const Configuration_t& config, uint16_t fields) {
+  if (fields == 0) {
+    return;
+  }
+
+  preferences.begin("piddle", false);
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::Brightness))) {
+    preferences.putChar("bri", config.brightnessSlider);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::Sensitivity))) {
+    preferences.putChar("sen", config.sensitivitySlider);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::Speed))) {
+    preferences.putChar("spd", config.speedSlider);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::PatternLength))) {
+    preferences.putUChar("pat", config.patternLength);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::TileOffset))) {
+    preferences.putUChar("off", config.tileOffset);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::Rainbow))) {
+    preferences.putUChar("rbw", config.rainbowSwitch);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::NormalizeBands))) {
+    preferences.putUChar("nor", config.normalizeBandsSwitch);
+  }
+  // RgbButton is momentary UI state, not a persisted setting - intentionally not saved.
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::Rgb))) {
+    preferences.putUShort("rgb", config.rgb);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::ShowConverterLeds))) {
+    preferences.putUChar("cnv", config.showConverterLedsSwitch);
+  }
+  preferences.end();
+}
 
 void IRAM_ATTR buttonInterrupt() {
   static uint32_t pressTime = 0;
@@ -96,7 +163,7 @@ void IRAM_ATTR buttonInterrupt() {
     if (elapsed < 50) {
       return; // debounce
     }
-    switchToArtnetRequested = true;
+    bleConfigRequested = true;
   }
 }
 
@@ -104,10 +171,12 @@ void setup() {
   Serial.begin(115200);
   Serial.println("Setup");
 
-  // bootIntoBluetoothAudio lives in RTC_NOINIT_ATTR memory, so it's garbage on a genuine power-on -
-  // only trust it when the reset reason confirms it was actually our own ESP.restart() call below.
+  // bootIntoBleConfig lives in RTC_NOINIT_ATTR memory, so it's garbage on a genuine power-on - only
+  // trust it when the reset reason confirms it was actually our own ESP.restart() call below. A
+  // genuine power-on always boots straight into Bluetooth audio; BLE config mode is only entered
+  // when requested via the boot button.
   if (esp_reset_reason() != ESP_RST_SW) {
-    bootIntoBluetoothAudio = false;
+    bootIntoBleConfig = false;
   }
 
   // This had to be done first, but I think I fixed the bug that was causing problems? I don't want
@@ -134,8 +203,11 @@ void setup() {
   configuration.tileOffset = DEFAULT_TILE_OFFSET;
   configuration.showConverterLedsSwitch = DEFAULT_SHOW_CONVERTER_LEDS;
 
-  if (bootIntoBluetoothAudio) {
-    // Restore whatever was configured over BLE before we rebooted into Bluetooth audio mode.
+  // Overlay whatever was last saved to NVS (if anything) on top of the hardcoded defaults above.
+  loadConfigFromPreferences(configuration);
+
+  if (esp_reset_reason() == ESP_RST_SW) {
+    // Restore whatever was configured right before this reboot (into or out of BLE config mode).
     configuration = rtcSavedConfiguration;
   }
 
@@ -151,17 +223,19 @@ void setup() {
     &collectSamplesTask, // Task handle.
     1); // Core where the task should run
 
-  if (bootIntoBluetoothAudio) {
-    bootIntoBluetoothAudio = false;
-    bleConfigActive = false;
-    Serial.println("Booting straight into Bluetooth audio (BLE config skipped this boot)");
+  if (bootIntoBleConfig) {
+    bootIntoBleConfig = false;
+    bleConfigActive = true;
     configuration.rgbButton = 0;
-    setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
-  } else {
-    Serial.println("Setting up BLE config service");
+    Serial.println("Setting up BLE config service (requested via button press)");
     setupBleConfigService();
     bleConfigLastActivityMillis = millis();
     Serial.println("Done setting up BLE config service");
+  } else {
+    bleConfigActive = false;
+    Serial.println("Booting into Bluetooth audio");
+    configuration.rgbButton = 0;
+    setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
   }
 
   // Test all the logic level converter LEDs
@@ -197,37 +271,20 @@ void setup() {
 }
 
 void loop() {
-  if (switchToArtnetRequested && !artnetMode) {
-    switchToArtnetRequested = false;
-#if ENABLE_ARTNET
-    Serial.println("Switching to ArtNet mode");
-    if (bleConfigActive) {
-      teardownBleConfigService();
-      bleConfigActive = false;
-    } else {
+  if (bleConfigRequested) {
+    bleConfigRequested = false;
+    if (!bleConfigActive) {
+      Serial.println("Button pressed - rebooting into BLE config mode");
       teardownBluetoothAudio();
+      portENTER_CRITICAL(&configMux);
+      rtcSavedConfiguration = configuration;
+      portEXIT_CRITICAL(&configMux);
+      saveConfigFieldsToPreferences(configuration, pendingSaveFields);
+      pendingSaveFields = 0;
+      bootIntoBleConfig = true;
+      delay(100); // let the log line above actually flush over serial
+      ESP.restart();
     }
-    delay(500);
-    artnetPixels = reinterpret_cast<CRGB*>(leds);
-
-    // Suspend the display task and push black to all strips before WiFi init.
-    // WiFi can drive pin 2 (which is also an LED output) during station connect,
-    // causing the WS2812B on that strip to latch a white frame.
-    vTaskSuspend(displayLedsTask);
-    ::memset(leds, 0, sizeof(leds));
-    driver.showPixels(WAIT);
-
-    setupArtnet(collectSamplesTask, &artnetMode);
-
-    // Clear again after WiFi init in case any strip latched interference during init.
-    ::memset(leds, 0, sizeof(leds));
-    driver.showPixels(WAIT);
-
-    artnetMode = true;
-    vTaskResume(displayLedsTask);
-#else
-    Serial.println("ArtNet is disabled (ENABLE_ARTNET=0)");
-#endif
   }
 
   if (bleConfigActive) {
@@ -237,12 +294,15 @@ void loop() {
       portENTER_CRITICAL(&configMux);
       rtcSavedConfiguration = configuration;
       portEXIT_CRITICAL(&configMux);
-      bootIntoBluetoothAudio = true;
+      saveConfigFieldsToPreferences(configuration, pendingSaveFields);
+      pendingSaveFields = 0;
+      bootIntoBleConfig = false;
       delay(100); // let the log line above actually flush over serial
       ESP.restart();
     } else {
       BleConfigMessage_t bleMsg;
-      if (pollBleConfigService(bleMsg)) {
+      uint16_t changedFields;
+      if (pollBleConfigService(bleMsg, changedFields)) {
         bleConfigLastActivityMillis = millis();
         Serial.printf(
           "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x cnv:%d\n",
@@ -267,8 +327,19 @@ void loop() {
         configuration.rgb = bleMsg.rgb;
         configuration.showConverterLedsSwitch = bleMsg.showConverterLeds;
         portEXIT_CRITICAL(&configMux);
+
+        pendingSaveFields |= changedFields;
+        lastConfigChangeMillis = millis();
       }
     }
+  }
+
+  // Debounced NVS save: while BLE config is actively streaming slider updates (every ~40ms while
+  // dragging), only persist once changes have settled, to avoid hammering flash - and even then,
+  // only the specific field(s) that changed rather than the whole configuration.
+  if (pendingSaveFields != 0 && millis() - lastConfigChangeMillis > CONFIG_SAVE_DEBOUNCE_MS) {
+    saveConfigFieldsToPreferences(configuration, pendingSaveFields);
+    pendingSaveFields = 0;
   }
 
   delay(100);

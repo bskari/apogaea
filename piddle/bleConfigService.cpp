@@ -26,6 +26,8 @@ portMUX_TYPE bleConfigMux = portMUX_INITIALIZER_UNLOCKED;
 BleConfigMessage_t currentConfig = {25, 25, 60, 70, 0, 0, 1, 0, 0, 0};
 volatile bool messagePending = false;
 volatile bool clientConnected = false;
+// Bitmask (1 << BleConfigField) of every field applied since the last poll.
+volatile uint16_t pendingChangedFields = 0;
 
 class ConfigServerCallbacks : public BLEServerCallbacks {
   void onConnect(BLEServer* server) override {
@@ -104,7 +106,10 @@ class ConfigWriteCallbacks : public BLECharacteristicCallbacks {
 
     portENTER_CRITICAL(&bleConfigMux);
     const bool applied = applyFieldUpdate(update.field, update.value, currentConfig);
-    if (applied) messagePending = true;
+    if (applied) {
+      messagePending = true;
+      pendingChangedFields |= (1 << update.field);
+    }
     portEXIT_CRITICAL(&bleConfigMux);
 
     if (!applied) {
@@ -153,14 +158,16 @@ void teardownBleConfigService() {
   BLEDevice::deinit(false);
 }
 
-bool pollBleConfigService(BleConfigMessage_t& out) {
+bool pollBleConfigService(BleConfigMessage_t& out, uint16_t& changedFields) {
   if (!messagePending) {
     return false;
   }
 
   portENTER_CRITICAL(&bleConfigMux);
   out = currentConfig;
+  changedFields = pendingChangedFields;
   messagePending = false;
+  pendingChangedFields = 0;
   portEXIT_CRITICAL(&bleConfigMux);
 
   return true;

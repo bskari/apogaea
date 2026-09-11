@@ -30,7 +30,9 @@ struct BleConfigMessage_t {
 };
 
 void setupBleConfigService();
-bool pollBleConfigService(BleConfigMessage_t& out);
+// changedFields is a bitmask (1 << BleConfigField) of every field applied since the previous poll,
+// so callers can persist only what actually changed instead of rewriting every field.
+bool pollBleConfigService(BleConfigMessage_t& out, uint16_t& changedFields);
 
 // True while a BLE central is connected.
 bool isBleClientConnected();
