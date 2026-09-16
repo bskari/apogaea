@@ -1,0 +1,23 @@
+# Simulator
+
+Just simulates the LEDs. Give it some files with audio.
+
+## Compile
+
+    cd sim
+    mkdir -p build && cd build
+    cmake ..
+    make
+
+## Controls
+
+- R: Toggle rainbow mode
+- N: Toggle normalize bands
+- up/down: change brightness
+- Left/Right: Speed +/- 5
+- ,/.: Sensitivity +/- 5
+- [/]: Previous/Next audio file
+- -/=: Pattern length -/+ 1
+- Q/W: Tile offset -/+ 1
+- H: Print help
+- Escape: Quit
