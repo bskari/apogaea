@@ -22,7 +22,7 @@ bool initDisplay(DisplayState& d) {
         "Piddle Simulator",
         SDL_WINDOWPOS_CENTERED, SDL_WINDOWPOS_CENTERED,
         WINDOW_SIZE, WINDOW_SIZE,
-        SDL_WINDOW_SHOWN);
+        SDL_WINDOW_SHOWN | SDL_WINDOW_RESIZABLE);
     if (!d.window) {
         fprintf(stderr, "SDL_CreateWindow failed: %s\n", SDL_GetError());
         return false;
@@ -34,6 +34,8 @@ bool initDisplay(DisplayState& d) {
         SDL_DestroyWindow(d.window);
         return false;
     }
+    // Render at a fixed logical size; SDL scales (letterboxed) to the window.
+    SDL_RenderSetLogicalSize(d.renderer, WINDOW_SIZE, WINDOW_SIZE);
     return true;
 }
 
