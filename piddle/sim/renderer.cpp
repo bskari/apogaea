@@ -44,6 +44,39 @@ CRGB hsv2rgb(CHSV hsv) {
     }
 }
 
+const char* paletteName(Palette p) {
+    switch (p) {
+        case PALETTE_DEFAULT: return "Default";
+        case PALETTE_RAINBOW: return "Rainbow";
+        case PALETTE_PASTEL:  return "Pastel";
+        case PALETTE_FIRE:    return "Fire";
+        case PALETTE_OCEAN:   return "Ocean";
+        case PALETTE_SUNSET:  return "Sunset";
+        default:              return "?";
+    }
+}
+
+// Maps a cycling 0-255 position to a color for the given palette. Narrow
+// palettes sweep back and forth across their hue range so they wrap smoothly.
+static CRGB paletteColor(Palette palette, uint8_t pos, uint8_t value) {
+    struct Spec { uint8_t sat; uint8_t hueStart; uint8_t hueSpan; bool pingPong; };
+    static const Spec specs[PALETTE_COUNT] = {
+        {255,   0, 255, false}, // default (hue used as-is)
+        {255,   0, 255, false}, // rainbow
+        { 90,   0, 255, false}, // pastel: rainbow with low saturation
+        {255,   0,  40, true},  // fire: red -> yellow
+        {255, 120,  60, true},  // ocean: green-cyan -> blue
+        {255, 200,  75, true},  // sunset: magenta -> orange
+    };
+    const Spec& spec = specs[palette];
+    uint8_t hue = pos;
+    if (spec.pingPong) {
+        const uint8_t tri = pos < 128 ? pos * 2 : (255 - pos) * 2;
+        hue = static_cast<uint8_t>(spec.hueStart + (static_cast<uint16_t>(tri) * spec.hueSpan >> 8));
+    }
+    return hsv2rgb(CHSV(hue, spec.sat, value));
+}
+
 static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
 
 static void slideDown(int count) {
@@ -61,7 +94,7 @@ static uint8_t quadwave8(uint8_t x) {
 
 void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                const float noteValuesIn[NOTE_COUNT],
-               bool rainbow, bool normalizeBands, uint32_t millis, int patternLength, int tileOffset) {
+               Palette palette, bool normalizeBands, uint32_t millis, int patternLength, int tileOffset) {
     const int c4Index  = 11;
     const int startNote = c4Index - 4; // = 7
 
@@ -82,7 +115,7 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
     constexpr uint16_t hue16Step = 256 * 3;
 
     const uint8_t hueStart = [&]() -> uint8_t {
-        if (rainbow) {
+        if (palette != PALETTE_DEFAULT) {
             return ++rainbowOffset;
         }
         const int quadWaveMillisDiv = 64;
@@ -122,7 +155,7 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
         const uint8_t hue = static_cast<uint8_t>(hue16 >> 8);
         hue16 += hue16Step;
 
-        CRGB color = hsv2rgb(CHSV(hue, 255, gammaCorrected));
+        CRGB color = paletteColor(palette, hue, gammaCorrected);
         for (int i = 0; i < SLIDE_COUNT; ++i) {
             patternBuffer[strip][i] += color;
         }

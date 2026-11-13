@@ -15,13 +15,13 @@ uint8_t sensitivity_p  = 50;
 uint8_t speed_p        = 80;
 int     patternLength  = 24;
 int     tileOffset     = 2;
-bool    rainbow        = false;
+Palette palette        = PALETTE_DEFAULT;
 bool    normalizeBands = false;
 
 static void printHelp() {
     printf("Sonic Bloom Simulator\n");
     printf("Controls:\n");
-    printf("  R           Toggle rainbow mode\n");
+    printf("  C           Cycle color palette\n");
     printf("  N           Toggle normalize bands\n");
     printf("  Up/Down     Brightness +/- 5\n");
     printf("  Left/Right  Speed +/- 5\n");
@@ -31,13 +31,13 @@ static void printHelp() {
     printf("  Q/W         Tile offset -/+ 1\n");
     printf("  H           Print help\n");
     printf("  Escape      Quit\n");
-    printf("brightness:%d sensitivity:%d speed:%d patternLength:%d tileOffset:%d rainbow:%d normalizeBands:%d\n",
+    printf("brightness:%d sensitivity:%d speed:%d patternLength:%d tileOffset:%d palette:%s normalizeBands:%d\n",
         brightness_p,
         sensitivity_p,
         speed_p,
         patternLength,
         tileOffset,
-        rainbow,
+        paletteName(palette),
         normalizeBands);
     printf("\n");
 }
@@ -125,9 +125,9 @@ int main(int argc, char* argv[]) {
                         tileOffset = std::min(LEDS_PER_STRIP - 1, tileOffset + 1);
                         printf("Tile offset: %d\n", tileOffset);
                         break;
-                    case SDLK_r:
-                        rainbow = !rainbow;
-                        printf("Rainbow: %s\n", rainbow ? "ON" : "OFF");
+                    case SDLK_c:
+                        palette = static_cast<Palette>((palette + 1) % PALETTE_COUNT);
+                        printf("Palette: %s\n", paletteName(palette));
                         break;
                     case SDLK_n:
                         normalizeBands = !normalizeBands;
@@ -225,7 +225,7 @@ int main(int argc, char* argv[]) {
         float noteValues[NOTE_COUNT];
         processDSP(dsp, window, sensitivity_p, noteValues);
 
-        renderFft(leds, noteValues, rainbow, normalizeBands, SDL_GetTicks(), patternLength, tileOffset);
+        renderFft(leds, noteValues, palette, normalizeBands, SDL_GetTicks(), patternLength, tileOffset);
 
         // Apply brightness scale to a copy for display (don't modify the LED state)
         const float scale = static_cast<float>(brightness_p) / 100.0f;

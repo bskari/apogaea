@@ -11,7 +11,7 @@ Just simulates the LEDs. Give it some files with audio.
 
 ## Controls
 
-- R: Toggle rainbow mode
+- C: Cycle color palette (default, rainbow, pastel, fire, ocean, sunset)
 - N: Toggle normalize bands
 - up/down: change brightness
 - Left/Right: Speed +/- 5
