@@ -65,8 +65,40 @@ static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
 static unsigned char brightness = 64;
 
 static void computeFft();
-static void renderFft(bool rainbow, bool normalizeBands, int patternLength, int tileOffset, const uint16_t rgb);
+static void renderFft(uint8_t palette, bool normalizeBands, int patternLength, int tileOffset, const uint16_t rgb);
 static void slideDown(int count);
+
+// Keep in sync with Palette in sim/renderer.h and the palette dropdown in phonic-bloom-control.html.
+enum Palette : uint8_t {
+  PALETTE_DEFAULT,
+  PALETTE_RAINBOW,
+  PALETTE_PASTEL,
+  PALETTE_FIRE,
+  PALETTE_OCEAN,
+  PALETTE_SUNSET,
+  PALETTE_COUNT
+};
+
+// Maps a cycling 0-255 position to a color for the given palette. Narrow palettes sweep back and
+// forth across their hue range so they wrap smoothly. Mirrors paletteColor in sim/renderer.cpp.
+static CRGB paletteColor(const uint8_t palette, const uint8_t pos, const uint8_t value) {
+  struct Spec { uint8_t sat; uint8_t hueStart; uint8_t hueSpan; bool pingPong; };
+  static const Spec specs[PALETTE_COUNT] = {
+    {255,   0, 255, false}, // default (hue used as-is)
+    {255,   0, 255, false}, // rainbow
+    { 90,   0, 255, false}, // pastel: rainbow with low saturation
+    {255,   0,  40, true},  // fire: red -> yellow
+    {255, 120,  60, true},  // ocean: green-cyan -> blue
+    {255, 200,  75, true},  // sunset: magenta -> orange
+  };
+  const Spec& spec = specs[palette < PALETTE_COUNT ? palette : PALETTE_DEFAULT];
+  uint8_t hue = pos;
+  if (spec.pingPong) {
+    const uint8_t tri = pos < 128 ? pos * 2 : (255 - pos) * 2;
+    hue = static_cast<uint8_t>(spec.hueStart + ((static_cast<uint16_t>(tri) * spec.hueSpan) >> 8));
+  }
+  return CHSV(hue, spec.sat, value);
+}
 static float maxOutputForNote(int note);
 static void normalizeTo0_1(float samples[], int length, float minimumDivisor);
 static void logOutputNotes();
@@ -106,7 +138,7 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft(const bool rainbow, const bool normalizeBands, const int patternLength, const int tileOffset, const uint16_t rgb) {
+static void renderFft(const uint8_t palette, const bool normalizeBands, const int patternLength, const int tileOffset, const uint16_t rgb) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
@@ -143,8 +175,8 @@ static void renderFft(const bool rainbow, const bool normalizeBands, const int p
   const int quadWaveMillisDiv = 64;
   const int quadWaveDiv = 8;
 
-  const uint8_t hueStart = [rainbow]() mutable {
-    if (rainbow) {
+  const uint8_t hueStart = [palette]() mutable {
+    if (palette != PALETTE_DEFAULT) {
       ++rainbowOffset;
       return rainbowOffset;
     }
@@ -187,7 +219,7 @@ static void renderFft(const bool rainbow, const bool normalizeBands, const int p
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
 
-      CRGB color = CHSV(hue, 255, gammaCorrected);
+      CRGB color = paletteColor(palette, hue, gammaCorrected);
       if ((rgb >> strip) & 1) {
         const uint8_t tmp = color.r;
         color.r = color.g;
@@ -210,7 +242,7 @@ static void renderFft(const bool rainbow, const bool normalizeBands, const int p
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
       for (int i = 0; i < SLIDE_COUNT; ++i) {
-        patternBuffer[strip][LEDS_PER_STRIP - 1 - i] += CHSV(hue, 255, gammaCorrected);
+        patternBuffer[strip][LEDS_PER_STRIP - 1 - i] += paletteColor(palette, hue, gammaCorrected);
         if ((rgb >> strip) & 1) {
           const uint8_t tmp = patternBuffer[strip][LEDS_PER_STRIP - 1 - i].r;
           patternBuffer[strip][LEDS_PER_STRIP - 1 - i].r = patternBuffer[strip][LEDS_PER_STRIP - 1 - i].g;
@@ -304,7 +336,7 @@ void writeBtSamples(const uint8_t* stereoData, uint32_t length) {
 
 void displaySpectrumAnalyzer(
   uint8_t brightness_p,
-  const bool rainbow,
+  const uint8_t palette,
   const bool normalizeBands,
   const uint8_t sensitivity_p,
   const uint8_t speed_p,
@@ -395,7 +427,7 @@ void displaySpectrumAnalyzer(
     part_us = micros();
   #endif
 
-  renderFft(rainbow, normalizeBands, patternLength, tileOffset, rgb);
+  renderFft(palette, normalizeBands, patternLength, tileOffset, rgb);
   #if LOG_TIMING
     const auto render_us = micros() - part_us;
   #endif

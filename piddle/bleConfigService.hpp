@@ -9,7 +9,7 @@ enum class BleConfigField : uint8_t {
   Speed = 2,
   PatternLength = 3,
   TileOffset = 4,
-  Rainbow = 5,
+  Palette = 5,
   NormalizeBands = 6,
   RgbButton = 7,
   Rgb = 8,
@@ -22,7 +22,7 @@ struct BleConfigMessage_t {
   int8_t speed; // from 0 to 100
   int8_t patternLength; // from 0 to 100
   int8_t tileOffset; // from 0 to 100
-  uint8_t rainbow; // =1 if switch ON and =0 if OFF, from 0 to 1
+  uint8_t palette; // color palette index, from 0 to 5 (default, rainbow, pastel, fire, ocean, sunset)
   uint8_t normalizeBands; // =1 if switch ON and =0 if OFF, from 0 to 1
   uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or not

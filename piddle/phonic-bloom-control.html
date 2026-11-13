@@ -308,6 +308,18 @@
 
   .toggle-row span { font-size: 0.88rem; font-weight: 600; }
 
+  .toggle-row select {
+    font: inherit;
+    font-size: 0.88rem;
+    color: inherit;
+    background: transparent;
+    border: 1px solid var(--accent-dim);
+    border-radius: 6px;
+    padding: 0.3rem 0.5rem;
+  }
+  .toggle-row select option { color: initial; }
+  .toggle-row select:focus-visible { outline: 2px solid var(--focus); outline-offset: 2px; }
+
   .switch {
     position: relative;
     width: 2.75rem;
@@ -540,12 +552,15 @@
     <legend>Modes</legend>
 
     <div class="toggle-row">
-      <span>Rainbow</span>
-      <label class="switch">
-        <input type="checkbox" id="rainbow" />
-        <span class="switch-track"></span>
-        <span class="switch-thumb"></span>
-      </label>
+      <span>Palette</span>
+      <select id="palette">
+        <option value="0">Default</option>
+        <option value="1">Rainbow</option>
+        <option value="2">Pastel</option>
+        <option value="3">Fire</option>
+        <option value="4">Ocean</option>
+        <option value="5">Sunset</option>
+      </select>
     </div>
 
     <div class="toggle-row">
@@ -598,7 +613,7 @@
   var STRIP_COUNT = 15;
   var STORAGE_KEY = "phonicBloomConfig";
   // Fields that make up a saved/restored configuration (excludes the momentary test toggle).
-  var CONFIG_KEYS = ["brightness", "sensitivity", "speed", "patternLength", "tileOffset", "rainbow", "normalizeBands", "rgb", "showConverterLeds"];
+  var CONFIG_KEYS = ["brightness", "sensitivity", "speed", "patternLength", "tileOffset", "palette", "normalizeBands", "rgb", "showConverterLeds"];
 
   // Must stay in sync with BleConfigField in bleConfigService.hpp.
   var FIELD = {
@@ -607,7 +622,7 @@
     speed: 2,
     patternLength: 3,
     tileOffset: 4,
-    rainbow: 5,
+    palette: 5,
     normalizeBands: 6,
     rgbButton: 7,
     rgb: 8,
@@ -620,7 +635,7 @@
     speed: 60,
     patternLength: 70,
     tileOffset: 0,
-    rainbow: 0,
+    palette: 0,
     normalizeBands: 1,
     rgbButton: 0,
     rgb: 0,
@@ -722,7 +737,11 @@
       scheduleWrite(key);
     });
   }
-  wireSwitch("rainbow", "rainbow");
+  var paletteSelect = document.getElementById("palette");
+  paletteSelect.addEventListener("change", function () {
+    state.palette = Number(paletteSelect.value);
+    scheduleWrite("palette");
+  });
   wireSwitch("normalizeBands", "normalizeBands");
   wireSwitch("showConverterLeds", "showConverterLeds");
 
@@ -751,6 +770,8 @@
         updateSliderFill(input);
       } else if (input && input.type === "checkbox") {
         input.checked = !!state[key];
+      } else if (input && input.tagName === "SELECT") {
+        input.value = String(state[key]);
       }
       scheduleWrite(key);
     });
@@ -792,6 +813,8 @@
       console.error("Failed to parse saved config", err);
       return;
     }
+    // Configs saved before palettes existed stored a rainbow on/off flag.
+    if (typeof loaded.palette !== "number" && loaded.rainbow === 1) loaded.palette = 1;
     CONFIG_KEYS.forEach(function (key) {
       if (typeof loaded[key] === "number") state[key] = loaded[key];
     });

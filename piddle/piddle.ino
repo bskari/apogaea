@@ -33,7 +33,7 @@ struct Configuration_t {
   int8_t brightnessSlider; // from 0 to 100
   int8_t sensitivitySlider; // from 0 to 100
   int8_t speedSlider; // from 0 to 100
-  uint8_t rainbowSwitch; // =1 if switch ON and =0 if OFF
+  uint8_t palette; // color palette index, 0 to 5 (default, rainbow, pastel, fire, ocean, sunset)
   uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF
   uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or GRB
@@ -98,7 +98,13 @@ void loadConfigFromPreferences(Configuration_t& config) {
   config.brightnessSlider = preferences.getChar("bri", config.brightnessSlider);
   config.sensitivitySlider = preferences.getChar("sen", config.sensitivitySlider);
   config.speedSlider = preferences.getChar("spd", config.speedSlider);
-  config.rainbowSwitch = preferences.getUChar("rbw", config.rainbowSwitch);
+  if (preferences.isKey("pal")) {
+    config.palette = preferences.getUChar("pal", config.palette);
+    if (config.palette > 5) config.palette = 0;
+  } else if (preferences.getUChar("rbw", 0) == 1) {
+    // Migrate the old rainbow on/off setting so existing devices keep their look.
+    config.palette = 1;
+  }
   config.normalizeBandsSwitch = preferences.getUChar("nor", config.normalizeBandsSwitch);
   config.rgb = preferences.getUShort("rgb", config.rgb);
   config.patternLength = preferences.getUChar("pat", config.patternLength);
@@ -130,8 +136,8 @@ void saveConfigFieldsToPreferences(const Configuration_t& config, uint16_t field
   if (fields & (1 << static_cast<uint8_t>(BleConfigField::TileOffset))) {
     preferences.putUChar("off", config.tileOffset);
   }
-  if (fields & (1 << static_cast<uint8_t>(BleConfigField::Rainbow))) {
-    preferences.putUChar("rbw", config.rainbowSwitch);
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::Palette))) {
+    preferences.putUChar("pal", config.palette);
   }
   if (fields & (1 << static_cast<uint8_t>(BleConfigField::NormalizeBands))) {
     preferences.putUChar("nor", config.normalizeBandsSwitch);
@@ -193,7 +199,7 @@ void setup() {
   attachInterrupt(0, buttonInterrupt, CHANGE);
 
   configuration.brightnessSlider = DEFAULT_BRIGHTNESS;
-  configuration.rainbowSwitch = false;
+  configuration.palette = 0;
   configuration.normalizeBandsSwitch = true;
   configuration.speedSlider = DEFAULT_SPEED;
   configuration.sensitivitySlider = DEFAULT_SENSITIVITY;
@@ -305,11 +311,11 @@ void loop() {
       if (pollBleConfigService(bleMsg, changedFields)) {
         bleConfigLastActivityMillis = millis();
         Serial.printf(
-          "bri:%d sen:%d spd:%d rbw:%d nor:%d rgbButton:%d rgb:%04x cnv:%d\n",
+          "bri:%d sen:%d spd:%d pal:%d nor:%d rgbButton:%d rgb:%04x cnv:%d\n",
           bleMsg.brightness,
           bleMsg.sensitivity,
           bleMsg.speed,
-          bleMsg.rainbow,
+          bleMsg.palette,
           bleMsg.normalizeBands,
           bleMsg.rgbButton,
           bleMsg.rgb,
@@ -321,7 +327,7 @@ void loop() {
         configuration.speedSlider = bleMsg.speed;
         configuration.patternLength = bleMsg.patternLength;
         configuration.tileOffset = bleMsg.tileOffset;
-        configuration.rainbowSwitch = bleMsg.rainbow;
+        configuration.palette = bleMsg.palette;
         configuration.normalizeBandsSwitch = bleMsg.normalizeBands;
         configuration.rgbButton = bleMsg.rgbButton;
         configuration.rgb = bleMsg.rgb;
@@ -399,7 +405,7 @@ void displayLedsFunction(void*) {
       } else {
         displaySpectrumAnalyzer(
           configuration.brightnessSlider,
-          configuration.rainbowSwitch,
+          configuration.palette,
           configuration.normalizeBandsSwitch,
           configuration.sensitivitySlider,
           configuration.speedSlider,

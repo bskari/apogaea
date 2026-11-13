@@ -67,9 +67,9 @@ bool applyFieldUpdate(uint8_t field, uint16_t value, BleConfigMessage_t& config)
       if (value > 100) return false;
       config.tileOffset = static_cast<int8_t>(value);
       return true;
-    case BleConfigField::Rainbow:
-      if (value > 1) return false;
-      config.rainbow = static_cast<uint8_t>(value);
+    case BleConfigField::Palette:
+      if (value > 5) return false;
+      config.palette = static_cast<uint8_t>(value);
       return true;
     case BleConfigField::NormalizeBands:
       if (value > 1) return false;
