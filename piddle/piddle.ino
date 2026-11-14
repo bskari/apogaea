@@ -152,11 +152,18 @@ void saveConfigFieldsToPreferences(const Configuration_t& config, uint16_t field
   preferences.end();
 }
 
+// Minimum time the button must be held to count as a deliberate press. USB-serial auto-reset
+// circuits (DTR/RTS) pulse GPIO0 for only a few ms to tens of ms when a monitor connects.
+static constexpr uint32_t MIN_BUTTON_HOLD_MS = 200;
+
 void IRAM_ATTR buttonInterrupt() {
+  // 0 means "no valid press in progress". (millis() can legitimately be 0 only at the very start of
+  // boot, which the guard below ignores anyway.)
   static uint32_t pressTime = 0;
 
   // This button starts pressed? Just ignore it at boot
   if (millis() < 1000) {
+    pressTime = 0;
     return;
   }
 
@@ -164,10 +171,14 @@ void IRAM_ATTR buttonInterrupt() {
     // Falling edge - record press time
     pressTime = millis();
   } else {
-    // Rising edge - decide action based on hold duration
+    // Rising edge - only valid if we saw the matching falling edge, and it was held long enough
+    if (pressTime == 0) {
+      return;
+    }
     uint32_t elapsed = millis() - pressTime;
-    if (elapsed < 50) {
-      return; // debounce
+    pressTime = 0;
+    if (elapsed < MIN_BUTTON_HOLD_MS) {
+      return; // glitch / debounce
     }
     bleConfigRequested = true;
   }
