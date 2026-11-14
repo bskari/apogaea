@@ -13,7 +13,7 @@
 uint8_t brightness_p   = 100;
 uint8_t sensitivity_p  = 50;
 uint8_t speed_p        = 80;
-int     patternLength  = 24;
+int     patternLength  = LEDS_PER_STRIP - 5;
 int     tileOffset     = 2;
 Palette palette        = PALETTE_DEFAULT;
 bool    normalizeBands = false;
