@@ -48,7 +48,7 @@ void setupArtnet(TaskHandle_t collectSamplesTask, volatile bool* artnetMode) {
   xTaskCreatePinnedToCore(
     artnetReceiverFunction,
     "artnetReceiver",
-    4000,    // Stack words
+    4000,    // Stack bytes
     nullptr,
     2,       // Priority - higher than display task (1) so packets are never dropped
     nullptr,

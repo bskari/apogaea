@@ -37,6 +37,11 @@ const int c4Index = 11;
 static const int NOTE_COUNT = COUNT_OF(NOTE_TO_OUTPUT_INDEX);
 static_assert(NOTE_TO_OUTPUT_INDEX[NOTE_COUNT - 1] < SAMPLE_COUNT / 2, "Too few samples to represent all notes");
 
+// Only FFT bins up to the highest note are ever displayed. Bins above SAMPLE_COUNT / 2 aren't even
+// valid power values (they're leftover packed FFT output), so weighting and normalization only
+// look at this many bins.
+static const int USED_BIN_COUNT = NOTE_TO_OUTPUT_INDEX[NOTE_COUNT - 1] + 1;
+
 // Slide down twice to make it move faster (just 1 for developing)
 const int SLIDE_COUNT = 1;
 
@@ -50,8 +55,10 @@ static int16_t rawSamples[SAMPLE_COUNT * 2];
 static volatile int rawSamplesOffset = 0;
 fft_config_t* realFftPlan = nullptr;
 
-static float weightingConstants[SAMPLE_COUNT];
-static float windowingConstants[SAMPLE_COUNT];
+static float weightingConstants[USED_BIN_COUNT];
+// The window is symmetric (w[i] == w[SAMPLE_COUNT - i]), so only store the first half plus the
+// center element. Saves 4 KB of internal RAM, which the Bluetooth stack needs.
+static float windowingConstants[SAMPLE_COUNT / 2 + 1];
 
 static i2s_chan_handle_t rxHandle;
 
@@ -110,8 +117,11 @@ static constexpr float square(const float f);
 
 static void computeFft() {
   // Windowing
-  for (int i = 0; i < COUNT_OF(input); ++i) {
+  for (int i = 0; i <= SAMPLE_COUNT / 2; ++i) {
     input[i] *= windowingConstants[i];
+  }
+  for (int i = SAMPLE_COUNT / 2 + 1; i < SAMPLE_COUNT; ++i) {
+    input[i] *= windowingConstants[SAMPLE_COUNT - i];
   }
 
   // Call this directly instead of through fft_execute for dead code elimination
@@ -410,7 +420,7 @@ void displaySpectrumAnalyzer(
 
   computeFft();
   // Bass lines have more energy than higher samples, so reduce them
-  for (int i = 0; i < COUNT_OF(output); ++i) {
+  for (int i = 0; i < USED_BIN_COUNT; ++i) {
     output[i] *= weightingConstants[i];
   }
   // Minimum divisor. The output from the FFT is squared, and we could sqrt it, but that's slow and
@@ -421,7 +431,7 @@ void displaySpectrumAnalyzer(
     // BT audio samples tend to run much hotter than the mic input, so raise the floor to compensate.
     minimumDivisor *= 10000;
   }
-  normalizeTo0_1(output, SAMPLE_COUNT, minimumDivisor);
+  normalizeTo0_1(output, USED_BIN_COUNT, minimumDivisor);
   #if LOG_TIMING
     const auto compute_us = micros() - part_us;
     part_us = micros();
@@ -621,7 +631,7 @@ static float windowingMultiplier(const int offset) {
  */
 static float maxOutputForNote(const int note) {
   if (note >= COUNT_OF(NOTE_TO_OUTPUT_INDEX) - 1) {
-    return output[COUNT_OF(NOTE_TO_OUTPUT_INDEX) - 1];
+    return output[NOTE_TO_OUTPUT_INDEX[COUNT_OF(NOTE_TO_OUTPUT_INDEX) - 1]];
   }
   float maxOutput = output[NOTE_TO_OUTPUT_INDEX[note]];
   for (int i = NOTE_TO_OUTPUT_INDEX[note]; i < NOTE_TO_OUTPUT_INDEX[note + 1]; ++i) {

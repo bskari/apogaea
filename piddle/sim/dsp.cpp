@@ -16,6 +16,10 @@ static const uint16_t NOTE_TO_OUTPUT_INDEX[NOTE_COUNT] = {
     154, 163, 173, 183
 };
 
+// Only bins up to the highest note are displayed; weighting and normalization only look at these.
+// Keep in sync with USED_BIN_COUNT in spectrumAnalyzer.cpp.
+static const int USED_BIN_COUNT = NOTE_TO_OUTPUT_INDEX[NOTE_COUNT - 1] + 1;
+
 static constexpr float square(float f) { return f * f; }
 
 static float aWeightingMultiplier(float frequency) {
@@ -73,7 +77,7 @@ DSPState* initDSP() {
     for (int i = 0; i < SAMPLE_COUNT; ++i) {
         s->windowingConstants[i] = windowingMultiplier(i);
     }
-    for (int i = 0; i < SAMPLE_COUNT; ++i) {
+    for (int i = 0; i < USED_BIN_COUNT; ++i) {
         const float freq = static_cast<float>(SAMPLE_RATE) / SAMPLE_COUNT * (i + 1);
         s->weightingConstants[i] = aWeightingMultiplier(freq);
     }
@@ -102,12 +106,12 @@ void processDSP(DSPState* s, const int16_t* samples, uint8_t sensitivity_p,
 
     powerOfTwo(s->output, SAMPLE_COUNT);
 
-    for (int i = 0; i < SAMPLE_COUNT; ++i) {
+    for (int i = 0; i < USED_BIN_COUNT; ++i) {
         s->output[i] *= s->weightingConstants[i];
     }
 
     const float minimumDivisor = square((130 - sensitivity_p) * 6000.0f);
-    normalizeTo0_1(s->output, SAMPLE_COUNT, minimumDivisor);
+    normalizeTo0_1(s->output, USED_BIN_COUNT, minimumDivisor);
 
     for (int note = 0; note < NOTE_COUNT; ++note) {
         noteValuesOut[note] = maxOutputForNote(s->output, note);

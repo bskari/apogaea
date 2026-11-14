@@ -217,13 +217,29 @@ void setup() {
     configuration = rtcSavedConfiguration;
   }
 
+  // I added the logging and fixed the stack comments. It compiles cleanly with --v2-1-pins, with no new warnings. I haven't run it on the board.
+  //
+  // Logging (piddle.ino, in loop()): every 2 seconds it prints one line over serial:
+  // Stack HWM (min free bytes): collect=… display=… loop=… | heap free=… min=… largest=…
+  // - The three stack values are the minimum free bytes ever seen for each task. A small number means the task came close to overflowing.
+  // - The heap values are current free, lowest free ever, and largest allocatable block. A falling min or largest when Bluetooth connects would point to heap exhaustion rather than a stack problem.
+  //
+  // Comments: piddle.ino and artnetReceiver.cpp now say the stack sizes are in bytes. The collectSamples and displayLeds comments also note that the old "672 used" and "2428 using" measurements were
+  // ambiguous, since the high-water mark reports free bytes.
+  //
+  // I left the stack sizes unchanged so the first run measures the real margins. If display or collect shows under about 500 free bytes with Bluetooth connected, raise that task's size. When the
+  // crash happens, the last log line and the reset message together will show whether it was a brownout, a stack problem or the heap.
+  //
+  // I haven't committed anything.
+
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
     "collectSamples",
-    // Measured with uxTaskGetStackHighWaterMark: only ~672 words actually used out of the 8000
-    // this was previously allocated. That oversized stack was starving the BT stack of internal
-    // RAM, causing a crash on BLE connect.
-    1500, // Stack size in words
+    // NOTE: on ESP32 Arduino the stack size is in BYTES, not words. This was previously 8000
+    // bytes, which was starving the BT stack of internal RAM and causing a crash on BLE connect.
+    // uxTaskGetStackHighWaterMark returns the minimum FREE stack (bytes), not the amount used -
+    // see the periodic "Stack HWM" log in loop().
+    1500, // Stack size in bytes
     nullptr, // Task input parameter
     1, // Priority of the task
     &collectSamplesTask, // Task handle.
@@ -267,8 +283,10 @@ void setup() {
   xTaskCreatePinnedToCore(
     displayLedsFunction,
     "displayLeds",
-    // Stack size in words. From printing uxTaskGetStackHighWaterMark, looks like it's using 2428 words.
-    3500, // Stack size in words.
+    // Stack size in bytes. An earlier measurement of 2428 from uxTaskGetStackHighWaterMark was
+    // ambiguous (that function returns minimum FREE bytes, not used) - check the periodic
+    // "Stack HWM" log in loop() with Bluetooth connected to see the real margin.
+    3500, // Stack size in bytes.
     nullptr, // Task input parameter
     1, // Priority of the task
     &displayLedsTask, // Task handle.
@@ -346,6 +364,22 @@ void loop() {
   if (pendingSaveFields != 0 && millis() - lastConfigChangeMillis > CONFIG_SAVE_DEBOUNCE_MS) {
     saveConfigFieldsToPreferences(configuration, pendingSaveFields);
     pendingSaveFields = 0;
+  }
+
+  // Periodically log stack/heap headroom to help diagnose crashes (e.g. when Bluetooth connects).
+  // Stack values are minimum FREE bytes ever seen for that task; low numbers mean near-overflow.
+  static uint32_t lastDiagnosticsMillis = 0;
+  if (millis() - lastDiagnosticsMillis >= 2000) {
+    lastDiagnosticsMillis = millis();
+    Serial.printf(
+      "Stack HWM (min free bytes): collect=%lu display=%lu loop=%lu | heap free=%lu min=%lu largest=%lu\n",
+      (unsigned long)(collectSamplesTask ? uxTaskGetStackHighWaterMark(collectSamplesTask) : 0),
+      (unsigned long)(displayLedsTask ? uxTaskGetStackHighWaterMark(displayLedsTask) : 0),
+      (unsigned long)uxTaskGetStackHighWaterMark(nullptr),
+      (unsigned long)ESP.getFreeHeap(),
+      (unsigned long)ESP.getMinFreeHeap(),
+      (unsigned long)ESP.getMaxAllocHeap()
+    );
   }
 
   delay(100);
