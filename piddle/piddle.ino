@@ -46,7 +46,9 @@ Configuration_t configuration;
 void blink(const int delay_ms = 500);
 
 CRGB leds[STRIP_COUNT][LEDS_PER_STRIP];
-bool logDebug = false;
+#ifdef LOG_DEBUG
+  bool logDebug = false;
+#endif
 portMUX_TYPE configMux = portMUX_INITIALIZER_UNLOCKED;
 
 TaskHandle_t collectSamplesTask;
@@ -228,21 +230,6 @@ void setup() {
     configuration = rtcSavedConfiguration;
   }
 
-  // I added the logging and fixed the stack comments. It compiles cleanly with --v2-1-pins, with no new warnings. I haven't run it on the board.
-  //
-  // Logging (piddle.ino, in loop()): every 2 seconds it prints one line over serial:
-  // Stack HWM (min free bytes): collect=… display=… loop=… | heap free=… min=… largest=…
-  // - The three stack values are the minimum free bytes ever seen for each task. A small number means the task came close to overflowing.
-  // - The heap values are current free, lowest free ever, and largest allocatable block. A falling min or largest when Bluetooth connects would point to heap exhaustion rather than a stack problem.
-  //
-  // Comments: piddle.ino and artnetReceiver.cpp now say the stack sizes are in bytes. The collectSamples and displayLeds comments also note that the old "672 used" and "2428 using" measurements were
-  // ambiguous, since the high-water mark reports free bytes.
-  //
-  // I left the stack sizes unchanged so the first run measures the real margins. If display or collect shows under about 500 free bytes with Bluetooth connected, raise that task's size. When the
-  // crash happens, the last log line and the reset message together will show whether it was a brownout, a stack problem or the heap.
-  //
-  // I haven't committed anything.
-
   xTaskCreatePinnedToCore(
     collectSamplesFunction,
     "collectSamples",
@@ -339,17 +326,19 @@ void loop() {
       uint16_t changedFields;
       if (pollBleConfigService(bleMsg, changedFields)) {
         bleConfigLastActivityMillis = millis();
-        Serial.printf(
-          "bri:%d sen:%d spd:%d pal:%d nor:%d rgbButton:%d rgb:%04x cnv:%d\n",
-          bleMsg.brightness,
-          bleMsg.sensitivity,
-          bleMsg.speed,
-          bleMsg.palette,
-          bleMsg.normalizeBands,
-          bleMsg.rgbButton,
-          bleMsg.rgb,
-          bleMsg.showConverterLeds
-        );
+        #ifdef LOG_DEBUG
+          Serial.printf(
+            "bri:%d sen:%d spd:%d pal:%d nor:%d rgbButton:%d rgb:%04x cnv:%d\n",
+            bleMsg.brightness,
+            bleMsg.sensitivity,
+            bleMsg.speed,
+            bleMsg.palette,
+            bleMsg.normalizeBands,
+            bleMsg.rgbButton,
+            bleMsg.rgb,
+            bleMsg.showConverterLeds
+          );
+        #endif
         portENTER_CRITICAL(&configMux);
         configuration.brightnessSlider = bleMsg.brightness;
         configuration.sensitivitySlider = bleMsg.sensitivity;
@@ -377,21 +366,23 @@ void loop() {
     pendingSaveFields = 0;
   }
 
-  // Periodically log stack/heap headroom to help diagnose crashes (e.g. when Bluetooth connects).
-  // Stack values are minimum FREE bytes ever seen for that task; low numbers mean near-overflow.
-  static uint32_t lastDiagnosticsMillis = 0;
-  if (millis() - lastDiagnosticsMillis >= 2000) {
-    lastDiagnosticsMillis = millis();
-    Serial.printf(
-      "Stack HWM (min free bytes): collect=%lu display=%lu loop=%lu | heap free=%lu min=%lu largest=%lu\n",
-      (unsigned long)(collectSamplesTask ? uxTaskGetStackHighWaterMark(collectSamplesTask) : 0),
-      (unsigned long)(displayLedsTask ? uxTaskGetStackHighWaterMark(displayLedsTask) : 0),
-      (unsigned long)uxTaskGetStackHighWaterMark(nullptr),
-      (unsigned long)ESP.getFreeHeap(),
-      (unsigned long)ESP.getMinFreeHeap(),
-      (unsigned long)ESP.getMaxAllocHeap()
-    );
-  }
+  #ifdef LOG_DEBUG
+    // Periodically log stack/heap headroom to help diagnose crashes (e.g. when Bluetooth connects).
+    // Stack values are minimum FREE bytes ever seen for that task; low numbers mean near-overflow.
+    static uint32_t lastDiagnosticsMillis = 0;
+    if (millis() - lastDiagnosticsMillis >= 2000) {
+      lastDiagnosticsMillis = millis();
+      Serial.printf(
+        "Stack HWM (min free bytes): collect=%lu display=%lu loop=%lu | heap free=%lu min=%lu largest=%lu\n",
+        (unsigned long)(collectSamplesTask ? uxTaskGetStackHighWaterMark(collectSamplesTask) : 0),
+        (unsigned long)(displayLedsTask ? uxTaskGetStackHighWaterMark(displayLedsTask) : 0),
+        (unsigned long)uxTaskGetStackHighWaterMark(nullptr),
+        (unsigned long)ESP.getFreeHeap(),
+        (unsigned long)ESP.getMinFreeHeap(),
+        (unsigned long)ESP.getMaxAllocHeap()
+      );
+    }
+  #endif
 
   delay(100);
 }
@@ -460,12 +451,14 @@ void displayLedsFunction(void*) {
           configuration.showConverterLedsSwitch);
       }
 
-      //if (Serial.available() > 0) {
-      //  logDebug = true;
-      //  while (Serial.available() > 0) {
-      //    Serial.read();
-      //  }
-      //}
+      #ifdef LOG_DEBUG
+        if (Serial.available() > 0) {
+          logDebug = true;
+          while (Serial.available() > 0) {
+            Serial.read();
+          }
+        }
+      #endif
     }
     // Keep the watchdog happy
     delay(1);

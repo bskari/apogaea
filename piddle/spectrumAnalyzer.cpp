@@ -66,7 +66,9 @@ volatile bool bluetoothActive = false;
 
 extern CRGB leds[STRIP_COUNT][LEDS_PER_STRIP];
 extern I2SClocklessLedDriver driver;
-extern bool logDebug;
+#ifdef LOG_DEBUG
+  extern bool logDebug;
+#endif
 
 static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
 static unsigned char brightness = 64;
@@ -161,16 +163,18 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const in
   for (int note = 0; note < NOTE_COUNT; ++note) {
     noteValues[note] = maxOutputForNote(note);
   }
-  if (logDebug) {
-    logOutputNotes();
-    logNotes(noteValues);
-    const auto unscaledMw = calculate_unscaled_power_mW(reinterpret_cast<CRGB*>(leds), LEDS_PER_STRIP * STRIP_COUNT);
-    Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) if at max brightness\n", unscaledMw, unscaledMw / 5, unscaledMw / 12);
-    const auto scaledMw = unscaledMw * brightness / 255;
-    const int brightness_p = brightness * 100 / 255;
-    Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) at %d%% brightness\n", scaledMw, scaledMw / 5, scaledMw / 12, brightness_p);
-    logDebug = false;
-  }
+  #ifdef LOG_DEBUG
+    if (logDebug) {
+      logOutputNotes();
+      logNotes(noteValues);
+      const auto unscaledMw = calculate_unscaled_power_mW(reinterpret_cast<CRGB*>(leds), LEDS_PER_STRIP * STRIP_COUNT);
+      Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) if at max brightness\n", unscaledMw, unscaledMw / 5, unscaledMw / 12);
+      const auto scaledMw = unscaledMw * brightness / 255;
+      const int brightness_p = brightness * 100 / 255;
+      Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) at %d%% brightness\n", scaledMw, scaledMw / 5, scaledMw / 12, brightness_p);
+      logDebug = false;
+    }
+  #endif
 
   int strip = 0;
   for (int i = 0; i < STRIP_COUNT; ++i) {
@@ -405,14 +409,16 @@ void displaySpectrumAnalyzer(
     }
   }
 
-  if (logDebug) {
-    Serial.println("Samples");
-    // I don't need all 2048 outputs, just get 50
-    for (int i = 0; i < 50; ++i) {
-      Serial.printf("%d ", FIX_SAMPLE_SIGN(rawSamples[(i + sampleOffset) % COUNT_OF(rawSamples)]));
+  #ifdef LOG_DEBUG
+    if (logDebug) {
+      Serial.println("Samples");
+      // I don't need all 2048 outputs, just get 50
+      for (int i = 0; i < 50; ++i) {
+        Serial.printf("%d ", FIX_SAMPLE_SIGN(rawSamples[(i + sampleOffset) % COUNT_OF(rawSamples)]));
+      }
+      Serial.println();
     }
-    Serial.println();
-  }
+  #endif
   #if LOG_TIMING
     const auto samples_us = micros() - part_us;
     part_us = micros();
