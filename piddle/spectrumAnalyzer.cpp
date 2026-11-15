@@ -100,7 +100,7 @@ static CRGB paletteColor(const uint8_t palette, const uint8_t pos, const uint8_t
     {255, 120,  60, true},  // ocean: green-cyan -> blue
     {255, 200,  75, true},  // sunset: magenta -> orange
   };
-  const Spec& spec = specs[palette < PALETTE_COUNT ? palette : PALETTE_DEFAULT];
+  const Spec& spec = specs[palette < PALETTE_COUNT ? static_cast<Palette>(palette) : PALETTE_DEFAULT];
   uint8_t hue = pos;
   if (spec.pingPong) {
     const uint8_t tri = pos < 128 ? pos * 2 : (255 - pos) * 2;
@@ -110,12 +110,15 @@ static CRGB paletteColor(const uint8_t palette, const uint8_t pos, const uint8_t
 }
 static float maxOutputForNote(int note);
 static void normalizeTo0_1(float samples[], int length, float minimumDivisor);
-static void logOutputNotes();
-static void logNotes(const float noteValues[NOTE_COUNT]);
 static float aWeightingMultiplier(const float frequency);
 static float windowingMultiplier(const int offset);
 static void powerOfTwo(float* const array, const int length);
 static constexpr float square(const float f);
+
+#ifdef LOG_DEBUG
+  static void logOutputNotes();
+  static void logNotes(const float noteValues[NOTE_COUNT]);
+#endif
 
 static void computeFft() {
   // Windowing
@@ -679,6 +682,7 @@ void powerOfTwo(float* const array, const int length) {
   }
 }
 
+#ifdef LOG_DEBUG
 static void logOutputNotes() {
   Serial.println("Output at notes:");
   for (int i = 0; i < 20; ++i) {
@@ -718,3 +722,4 @@ static void logNotes(const float noteValues[NOTE_COUNT]) {
   }
   Serial.println();
 }
+#endif

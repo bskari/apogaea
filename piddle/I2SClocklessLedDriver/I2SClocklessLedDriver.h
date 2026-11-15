@@ -7,7 +7,7 @@
 #ifndef __I2S_CLOCKLESS_DRIVER_H
 #define __I2S_CLOCKLESS_DRIVER_H
 
- 
+
 #pragma once
 
 
@@ -283,7 +283,7 @@ public:
     #ifdef __HARDWARE_MAP_PROGMEM
         const uint16_t * _hmap;
        volatile uint16_t _hmapoff;
-   
+
 
     void setHmap(const uint16_t * map)
     {
@@ -295,7 +295,7 @@ public:
       mapLed = newMapLed;
 
     }
- 
+
     /*
      This flag is used when using the NO_WAIT mode
      */
@@ -305,7 +305,7 @@ public:
     volatile bool framesync = false;
     volatile bool wasWaitingtofinish = false;
     volatile int counti;
-    
+
 
     I2SClocklessLedDriver(){};
     void setPins(const int *Pins)
@@ -500,7 +500,7 @@ public:
         /*
          We wait for the display to be stopped before launching a new one
          */
-        
+
          __displayMode = dispmode;
         isWaiting = false;
         if (dispmode == LOOP or dispmode == LOOP_INTERUPT)
@@ -519,7 +519,7 @@ public:
             I2SClocklessLedDriver_sem=xSemaphoreCreateBinary();
             xSemaphoreTake(I2SClocklessLedDriver_sem, portMAX_DELAY);
         }
-    
+
     }
 
 
@@ -529,7 +529,7 @@ public:
         showPixelsFirstTranspose();
         _offsetDisplay = _defaultOffsetDisplay;
     }
-    
+
     void showPixelsFirstTranspose(OffsetDisplay offdisp,uint8_t * temp_leds)
     {
         _offsetDisplay = offdisp;
@@ -588,7 +588,7 @@ public:
         transposeAll();
         //Serial.println("end transpose");
         showPixelsFromBuffer(dispmode);
-       
+
     }
 
     void transposeAll()
@@ -787,7 +787,7 @@ public:
         }
     }
 
-   
+
 
     OffsetDisplay getDefaultOffset()
     {
@@ -804,9 +804,9 @@ public:
                 {
                     I2SClocklessLedDriver_waitDisp = xSemaphoreCreateCounting(10,0);
                 }
-                 const TickType_t xDelay = __delay ; 
+                 const TickType_t xDelay = __delay ;
                 xSemaphoreTake(I2SClocklessLedDriver_waitDisp,xDelay);
-            
+
             }
     isDisplaying=true;
  }
@@ -834,7 +834,7 @@ public:
          waitDisplay();
         _offsetDisplay = offdisp;
         leds=saveleds;
-       
+
         __displayMode=WAIT;
         __showPixels();
        // _offsetDisplay = _defaultOffsetDisplay;
@@ -849,7 +849,7 @@ public:
         __displayMode=WAIT;
         _offsetDisplay=_defaultOffsetDisplay;
         __showPixels();
-  
+
     }
 
     void showPixels()
@@ -863,7 +863,7 @@ public:
         __showPixels();
     }
 
-    
+
         void showPixels(displayMode dispmode,uint8_t *newleds)
     {
 
@@ -893,11 +893,11 @@ public:
         }
 #ifdef __HARDWARE_MAP
            _hmapoff=_hmap;
-        
+
     #endif
     #ifdef __HARDWARE_MAP_HARDWARE
            _hmapoff=0;
-        
+
     #endif
 
 
@@ -915,7 +915,7 @@ public:
         dmaBufferActive = 0;
 
         loadAndTranspose(this);
-  
+
        // __displayMode=dispmode;
         dmaBufferActive = 1;
         i2sStart(DMABuffersTampon[2]);
@@ -964,7 +964,7 @@ public:
 
 #ifdef USE_PIXELSLIB
     void initled(Pixels pix,const int *Pinsq)
-    { 
+    {
         initled((uint8_t *)pix.getPixels(),Pinsq,pix.getLengths(), pix.getNumStrip());
     }
 #endif
@@ -1006,7 +1006,7 @@ public:
         }
         int maximum= maxLength( sizes,num_strips);
 
-           
+
         switch (cArr)
         {
         case ORDER_RGB:
@@ -1222,24 +1222,24 @@ createhardwareMap();
     {
 
         esp_intr_disable(_gI2SClocklessDriver_intr_handle);
-       
+
 ets_delay_us(16);
         (&I2S0)->conf.tx_start = 0;
         while( (&I2S0)->conf.tx_start ==1){}
          i2sReset();
-         
+
              isDisplaying =false;
 
-    
+
         if(  wasWaitingtofinish == true)
         {
 
                wasWaitingtofinish = false;
                   xSemaphoreGive(I2SClocklessLedDriver_waitDisp);
-                 
+
         }
-    
-        
+
+
     } */
 
     void putdefaultones(uint16_t *buffer)
@@ -1329,24 +1329,24 @@ static void IRAM_ATTR  i2sStop( I2SClocklessLedDriver *cont)
     {
 
         esp_intr_disable(cont->_gI2SClocklessDriver_intr_handle);
-       
+
 ets_delay_us(16);
         (&I2S0)->conf.tx_start = 0;
         while( (&I2S0)->conf.tx_start ==1){}
          cont->i2sReset();
-         
+
               cont->isDisplaying =false;
 
-    
+
         if(   cont->wasWaitingtofinish == true)
         {
 
                 cont->wasWaitingtofinish = false;
                   xSemaphoreGive( cont->I2SClocklessLedDriver_waitDisp);
-                 
+
         }
-    
-        
+
+
     }
 static void IRAM_ATTR _I2SClocklessLedDriverinterruptHandler(void *arg)
 {
@@ -1369,12 +1369,12 @@ if(!cont->__enableDriver)
 
         if (((I2SClocklessLedDriver *)arg)->transpose)
         {
-            cont->ledToDisplay++;
+            cont->ledToDisplay = cont->ledToDisplay + 1;
             if (cont->ledToDisplay < cont->num_led_per_strip)
             {
 
                loadAndTranspose(cont);
-          
+
                if (cont->ledToDisplay == cont->num_led_per_strip - 3) //here it's not -1 because it takes time top have the change into account and it reread the buufer
                 {
                     cont->DMABuffersTampon[cont->dmaBufferActive]->descriptor.qe.stqe_next = &(cont->DMABuffersTampon[3]->descriptor);
@@ -1395,7 +1395,7 @@ if(!cont->__enableDriver)
     }
 
     if (GET_PERI_REG_BITS(I2S_INT_ST_REG(I2S_DEVICE), I2S_OUT_TOTAL_EOF_INT_ST_S, I2S_OUT_TOTAL_EOF_INT_ST_S))
-    {           
+    {
        // ((I2SClocklessLedDriver *)arg)->i2sStop();
          i2sStop(cont);
         if (cont->isWaiting)
@@ -1547,4 +1547,3 @@ static void IRAM_ATTR loadAndTranspose(I2SClocklessLedDriver *driver)//uint8_t *
 
 
 #endif
-
