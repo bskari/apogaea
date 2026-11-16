@@ -24,9 +24,7 @@
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
-#if ENABLE_ARTNET
-#  include "artnetReceiver.hpp"
-#endif
+#include "artnetReceiver.hpp"
 
 struct Configuration_t {
   int8_t brightnessSlider; // from 0 to 100
@@ -54,7 +52,6 @@ TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
 I2SClocklessLedDriver driver;
 
-SemaphoreHandle_t artnetPixelsMutex;
 static volatile bool artNetMode = false;
 static volatile bool artNetModeRequested = false;
 RTC_NOINIT_ATTR static bool bootIntoArtNetMode = false;
@@ -263,7 +260,8 @@ void setup() {
     Serial.println("Done setting up BLE config service");
   } else if (bootIntoArtNetMode) {
     Serial.println("Booting into ArtNet mode");
-    artNetMode = true;
+    artNetPixels = reinterpret_cast<CRGB*>(leds);
+    setupArtNet(collectSamplesTask, &artNetMode);
     // Don't start any Bluetooth stacks
   } else {
     bleConfigActive = false;
@@ -432,8 +430,8 @@ void swapChannels(uint16_t rgbBitFlag) {
 void displayLedsFunction(void*) {
   while (1) {
     if (artNetMode && artNetActive) {
-      // ArtNet receiver writes directly into leds (artnetPixels points at leds)
-      while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
+      // ArtNet receiver writes directly into leds (artNetPixels points at leds)
+      while (xSemaphoreTake(artNetPixelsMutex, 0) == pdFALSE) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
       }
       swapChannels(configuration.rgb);
@@ -444,7 +442,7 @@ void displayLedsFunction(void*) {
       }
       driver.showPixels();
       swapChannels(configuration.rgb);
-      xSemaphoreGive(artnetPixelsMutex);
+      xSemaphoreGive(artNetPixelsMutex);
       delay(25); // ~40 fps
       continue;
     }

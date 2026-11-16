@@ -1,9 +1,5 @@
 #include "artnetReceiver.hpp"
 
-#if ENABLE_ARTNET
-
-#include "secrets.hpp"
-
 #include <string.h>
 #include <WiFi.h>
 #include <WiFiUdp.h>
@@ -34,6 +30,7 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 void setupArtNet(TaskHandle_t collectSamplesTask, volatile bool* artNetMode) {
   collectSamplesTaskHandle = collectSamplesTask;
   artNetModePtr = artNetMode;
+  *artNetModePtr = true;
   const char* const ssid = "Phonic Bloom Artnet";
   Serial.printf("%lu.%lu: ArtNet: starting AP '%s'...\n", millis() / 1000, millis() % 1000, ssid);
   WiFi.softAP(ssid);
@@ -195,5 +192,3 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   udp.write(reply, sizeof(reply));
   udp.endPacket();
 }
-
-#endif // ENABLE_ARTNET
