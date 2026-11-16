@@ -4,7 +4,6 @@
 // arduino-cli upload -p /dev/ttyUSB0 --fqbn esp32:esp32:esp32da
 
 
-
 #include <FastLED.h>
 #include <Preferences.h>
 
@@ -16,7 +15,7 @@
 
 #if ESP_ARDUINO_VERSION >= ESP_ARDUINO_VERSION_VAL(3, 1, 2)
 #  warning "I have only tested with ESP 3.1.2, newer versions crash on BLE config."
-// FWIW, 3.1.2 also crashes on classib Bluetooth disconnect
+// FWIW, 3.1.2 also crashes on classic Bluetooth disconnect
 #endif
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
@@ -55,7 +54,12 @@ TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
 I2SClocklessLedDriver driver;
 
-static volatile bool artnetMode = false;
+SemaphoreHandle_t artnetPixelsMutex;
+static volatile bool artNetMode = false;
+static volatile bool artNetModeRequested = false;
+RTC_NOINIT_ATTR static bool bootIntoArtNetMode = false;
+volatile bool artNetActive = false;
+
 
 // BLE config mode is only entered on request (button press, see buttonInterrupt/bleConfigRequested
 // below) rather than on every boot, so normally we boot straight into Bluetooth audio. If nobody
@@ -182,7 +186,12 @@ void IRAM_ATTR buttonInterrupt() {
     if (elapsed < MIN_BUTTON_HOLD_MS) {
       return; // glitch / debounce
     }
-    bleConfigRequested = true;
+
+    if (bleConfigActive) {
+      artNetModeRequested = true;
+    } else {
+      bleConfigRequested = true;
+    }
   }
 }
 
@@ -196,6 +205,7 @@ void setup() {
   // when requested via the boot button.
   if (esp_reset_reason() != ESP_RST_SW) {
     bootIntoBleConfig = false;
+    bootIntoArtNetMode = false;
   }
 
   // This had to be done first, but I think I fixed the bug that was causing problems? I don't want
@@ -251,6 +261,10 @@ void setup() {
     setupBleConfigService();
     bleConfigLastActivityMillis = millis();
     Serial.println("Done setting up BLE config service");
+  } else if (bootIntoArtNetMode) {
+    Serial.println("Booting into ArtNet mode");
+    artNetMode = true;
+    // Don't start any Bluetooth stacks
   } else {
     bleConfigActive = false;
     Serial.println("Booting into Bluetooth audio");
@@ -358,6 +372,15 @@ void loop() {
     }
   }
 
+  if (artNetModeRequested) {
+    artNetModeRequested = false;
+    bootIntoArtNetMode = true;
+    Serial.println("Button pressed - rebooting into ArtNet mode");
+    teardownBleConfigService();
+    delay(100); // let the log line above actually flush over serial
+    ESP.restart();
+  }
+
   // Debounced NVS save: while BLE config is actively streaming slider updates (every ~40ms while
   // dragging), only persist once changes have settled, to avoid hammering flash - and even then,
   // only the specific field(s) that changed rather than the whole configuration.
@@ -408,8 +431,7 @@ void swapChannels(uint16_t rgbBitFlag) {
 
 void displayLedsFunction(void*) {
   while (1) {
-#if ENABLE_ARTNET
-    if (artnetMode && artnetActive) {
+    if (artNetMode && artNetActive) {
       // ArtNet receiver writes directly into leds (artnetPixels points at leds)
       while (xSemaphoreTake(artnetPixelsMutex, 0) == pdFALSE) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
@@ -426,7 +448,6 @@ void displayLedsFunction(void*) {
       delay(25); // ~40 fps
       continue;
     }
-#endif
 
     // Audio-reactive mode (default, and resumed after ArtNet timeout)
     for (int i = 0; i < 10; ++i) {

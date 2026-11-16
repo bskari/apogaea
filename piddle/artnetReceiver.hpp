@@ -16,13 +16,15 @@ void setupArtnet(TaskHandle_t collectSamplesTask, volatile bool* artnetMode);
 void artnetReceiverFunction(void*);
 
 // True when ArtNet packets are actively arriving. Clears after 120s of silence (falls back to audio).
-extern volatile bool artnetActive;
+extern volatile bool artNetActive;
 
 // Most recent pixel data received from ArtNet, row-major: index as [strip * LEDS_PER_STRIP + led].
 // Strip N corresponds to ArtNet universe N. Allocated by setupArtnet().
-extern CRGB* artnetPixels;
+extern CRGB* artNetPixels;
 
 // Mutex that must be held while reading or writing artnetPixels.
-extern SemaphoreHandle_t artnetPixelsMutex;
+extern SemaphoreHandle_t artNetPixelsMutex;
+
+volatile extern bool artNetActive;
 
 #endif // ENABLE_ARTNET

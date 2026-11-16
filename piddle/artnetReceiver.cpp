@@ -12,15 +12,13 @@
 #define ARTNET_TIMEOUT_MS     2 * 60 * 1000
 #define ARTNET_UNIVERSE_OFFSET   0   // Strip 0 = universe 0
 
-volatile bool artnetActive = false;
-
-CRGB* artnetPixels = nullptr;
-SemaphoreHandle_t artnetPixelsMutex = nullptr;
+CRGB* artNetPixels = nullptr;
+SemaphoreHandle_t artNetPixelsMutex = nullptr;
 
 static WiFiUDP udp;
 static volatile uint32_t lastPacketMs = 0;
 static TaskHandle_t collectSamplesTaskHandle = nullptr;
-static volatile bool* artnetModePtr = nullptr;
+static volatile bool* artNetModePtr = nullptr;
 
 // ---------------------------------------------------------------------------
 // Forward declarations
@@ -33,21 +31,21 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 // Public API
 // ---------------------------------------------------------------------------
 
-void setupArtnet(TaskHandle_t collectSamplesTask, volatile bool* artnetMode) {
+void setupArtNet(TaskHandle_t collectSamplesTask, volatile bool* artNetMode) {
   collectSamplesTaskHandle = collectSamplesTask;
-  artnetModePtr = artnetMode;
+  artNetModePtr = artNetMode;
   const char* const ssid = "Phonic Bloom Artnet";
   Serial.printf("%lu.%lu: ArtNet: starting AP '%s'...\n", millis() / 1000, millis() % 1000, ssid);
   WiFi.softAP(ssid);
   Serial.printf("%lu.%lu: ArtNet: AP up, IP %s\n", millis() / 1000, millis() % 1000, WiFi.softAPIP().toString().c_str());
 
-  artnetPixelsMutex = xSemaphoreCreateMutex();
+  artNetPixelsMutex = xSemaphoreCreateMutex();
   udp.begin(ARTNET_PORT);
   Serial.printf("%lu.%lu: ArtNet: listening on UDP port %d\n", millis() / 1000, millis() % 1000, ARTNET_PORT);
 
   xTaskCreatePinnedToCore(
-    artnetReceiverFunction,
-    "artnetReceiver",
+    artNetReceiverFunction,
+    "artNetReceiver",
     4000,    // Stack bytes
     nullptr,
     2,       // Priority - higher than display task (1) so packets are never dropped
@@ -59,18 +57,18 @@ void setupArtnet(TaskHandle_t collectSamplesTask, volatile bool* artnetMode) {
 // Receiver task
 // ---------------------------------------------------------------------------
 
-void artnetReceiverFunction(void*) {
+void artNetReceiverFunction(void*) {
   static uint8_t buf[530]; // Largest valid ArtNet packet is 18 + 512 = 530 bytes
 
   while (1) {
     int pktLen = udp.parsePacket();
 
     if (pktLen <= 0) {
-      if (artnetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
+      if (artNetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
         Serial.printf("%lu.%lu: ArtNet: signal lost, resuming audio\n", millis() / 1000, millis() % 1000);
-        artnetActive = false;
+        artNetActive = false;
         vTaskResume(collectSamplesTaskHandle);
-        *artnetModePtr = false;
+        *artNetModePtr = false;
         vTaskDelete(NULL);
       }
       vTaskDelay(1 / portTICK_PERIOD_MS);
@@ -91,8 +89,8 @@ void artnetReceiverFunction(void*) {
       // ArtDMX
       handleArtDmx(buf, readLen);
       lastPacketMs = millis();
-      if (!artnetActive) {
-        artnetActive = true;
+      if (!artNetActive) {
+        artNetActive = true;
         vTaskSuspend(collectSamplesTaskHandle);
         Serial.println("ArtNet: receiving");
       }
@@ -132,13 +130,13 @@ static void handleArtDmx(const uint8_t* buf, int len) {
   const uint8_t* dmx = buf + 18;
   const int pixels = min((int)(dmxLen / 3), (int)LEDS_PER_STRIP);
 
-  xSemaphoreTake(artnetPixelsMutex, portMAX_DELAY);
+  xSemaphoreTake(artNetPixelsMutex, portMAX_DELAY);
   for (int i = 0; i < pixels; i++) {
-    artnetPixels[strip * LEDS_PER_STRIP + i].r = dmx[i * 3 + 0];
-    artnetPixels[strip * LEDS_PER_STRIP + i].g = dmx[i * 3 + 1];
-    artnetPixels[strip * LEDS_PER_STRIP + i].b = dmx[i * 3 + 2];
+    artNetPixels[strip * LEDS_PER_STRIP + i].r = dmx[i * 3 + 0];
+    artNetPixels[strip * LEDS_PER_STRIP + i].g = dmx[i * 3 + 1];
+    artNetPixels[strip * LEDS_PER_STRIP + i].b = dmx[i * 3 + 2];
   }
-  xSemaphoreGive(artnetPixelsMutex);
+  xSemaphoreGive(artNetPixelsMutex);
 }
 
 static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
