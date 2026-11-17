@@ -74,7 +74,7 @@ static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
 static unsigned char brightness = 64;
 
 static void computeFft();
-static void renderFft(uint8_t palette, bool normalizeBands, int patternLength, int tileOffset, const uint16_t rgb);
+static void renderFft(uint8_t palette, bool normalizeBands, const uint16_t rgb);
 static void slideDown(int count);
 
 // Keep in sync with Palette in sim/renderer.h and the palette dropdown in phonic-bloom-control.html.
@@ -153,7 +153,7 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft(const uint8_t palette, const bool normalizeBands, const int patternLength, const int tileOffset, const uint16_t rgb) {
+static void renderFft(const uint8_t palette, const bool normalizeBands, const uint16_t rgb) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
@@ -279,12 +279,10 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const in
     }
   }
 
-  // Tile patternBuffer across each full strip, with each tile offset into the history
+  // Copy patternBuffer across each full strip
   for (int i = 0; i < STRIP_COUNT; ++i) {
     for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-      const int tileIndex = j / patternLength;
-      const int bufferPos = min((j % patternLength) + tileIndex * tileOffset, LEDS_PER_STRIP - 1);
-      leds[i][j] = patternBuffer[i][bufferPos];
+      leds[i][j] = patternBuffer[i][j];
     }
   }
 
@@ -357,8 +355,6 @@ void displaySpectrumAnalyzer(
   const bool normalizeBands,
   const uint8_t sensitivity_p,
   const uint8_t speed_p,
-  const int patternLength,
-  const int tileOffset,
   const uint16_t rgb,
   const bool showConverterLeds
 ) {
@@ -446,7 +442,7 @@ void displaySpectrumAnalyzer(
     part_us = micros();
   #endif
 
-  renderFft(palette, normalizeBands, patternLength, tileOffset, rgb);
+  renderFft(palette, normalizeBands, rgb);
   #if LOG_TIMING
     const auto render_us = micros() - part_us;
   #endif

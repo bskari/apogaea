@@ -25,7 +25,7 @@ portMUX_TYPE bleConfigMux = portMUX_INITIALIZER_UNLOCKED;
 // Holds the merged, last-known-good value of every attribute. Single-field writes update this in
 // place rather than replacing it wholesale, so fields the client hasn't sent yet keep their value.
 // Defaults mirror the control page's initial slider/switch state.
-BleConfigMessage_t currentConfig = {25, 25, 60, 70, 0, 0, 1, 0, 0, 0};
+BleConfigMessage_t currentConfig = {25, 25, 60, 0, 1, 0, 0, 0};
 volatile bool messagePending = false;
 volatile bool clientConnected = false;
 // Bitmask (1 << BleConfigField) of every field applied since the last poll.
@@ -59,15 +59,6 @@ bool applyFieldUpdate(uint8_t field, uint16_t value, BleConfigMessage_t& config)
     case BleConfigField::Speed:
       if (value > 100) return false;
       config.speed = static_cast<int8_t>(value);
-      return true;
-    case BleConfigField::PatternLength:
-      // patternLength is a divisor below (renderFft), so 0 must never reach the LED code.
-      if (value < 5 || value > 100) return false;
-      config.patternLength = static_cast<int8_t>(value);
-      return true;
-    case BleConfigField::TileOffset:
-      if (value > 100) return false;
-      config.tileOffset = static_cast<int8_t>(value);
       return true;
     case BleConfigField::Palette:
       if (value > 5) return false;

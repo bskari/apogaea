@@ -84,8 +84,6 @@ const int STRIP_COUNT = COUNT_OF(LED_PINS);
 const int DEFAULT_BRIGHTNESS = 25;
 const int DEFAULT_SPEED = 60;
 const int DEFAULT_SENSITIVITY = 25;
-const int DEFAULT_PATTERN_LENGTH = 70;
-const int DEFAULT_TILE_OFFSET = 0;
 // The first LED in each strip in `leds` is a converter LED and is physically placed on the circuit
 // board. It's nice for testing, but annoying when run live. Toggled at runtime via BLE config.
 const bool DEFAULT_SHOW_CONVERTER_LEDS = false;

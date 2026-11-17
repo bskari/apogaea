@@ -530,22 +530,6 @@
       </div>
       <input type="range" id="speed" min="0" max="100" value="60" />
     </div>
-
-    <div class="control-row">
-      <div class="control-label-row">
-        <label for="patternLength">Pattern length</label>
-        <span class="control-value" id="patternLengthValue">70</span>
-      </div>
-      <input type="range" id="patternLength" min="0" max="100" value="70" />
-    </div>
-
-    <div class="control-row">
-      <div class="control-label-row">
-        <label for="tileOffset">Tile offset</label>
-        <span class="control-value" id="tileOffsetValue">0</span>
-      </div>
-      <input type="range" id="tileOffset" min="0" max="100" value="0" />
-    </div>
   </fieldset>
 
   <fieldset id="switches" disabled>
@@ -613,28 +597,24 @@
   var STRIP_COUNT = 15;
   var STORAGE_KEY = "phonicBloomConfig";
   // Fields that make up a saved/restored configuration (excludes the momentary test toggle).
-  var CONFIG_KEYS = ["brightness", "sensitivity", "speed", "patternLength", "tileOffset", "palette", "normalizeBands", "rgb", "showConverterLeds"];
+  var CONFIG_KEYS = ["brightness", "sensitivity", "speed", "palette", "normalizeBands", "rgb", "showConverterLeds"];
 
   // Must stay in sync with BleConfigField in bleConfigService.hpp.
   var FIELD = {
     brightness: 0,
     sensitivity: 1,
     speed: 2,
-    patternLength: 3,
-    tileOffset: 4,
-    palette: 5,
-    normalizeBands: 6,
-    rgbButton: 7,
-    rgb: 8,
-    showConverterLeds: 9
+    palette: 3,
+    normalizeBands: 4,
+    rgbButton: 5,
+    rgb: 6,
+    showConverterLeds: 7
   };
 
   var state = {
     brightness: 25,
     sensitivity: 25,
     speed: 60,
-    patternLength: 70,
-    tileOffset: 0,
     palette: 0,
     normalizeBands: 1,
     rgbButton: 0,
@@ -727,8 +707,6 @@
   wireSlider("brightness", "brightness");
   wireSlider("sensitivity", "sensitivity");
   wireSlider("speed", "speed");
-  wireSlider("patternLength", "patternLength");
-  wireSlider("tileOffset", "tileOffset");
 
   function wireSwitch(id, key) {
     var input = document.getElementById(id);

@@ -94,7 +94,7 @@ static uint8_t quadwave8(uint8_t x) {
 
 void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                const float noteValuesIn[NOTE_COUNT],
-               Palette palette, bool normalizeBands, uint32_t millis, int patternLength, int tileOffset) {
+               Palette palette, bool normalizeBands, uint32_t millis) {
     const int c4Index  = 11;
     const int startNote = c4Index - 4; // = 7
 
@@ -170,12 +170,10 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
         }
     }
 
-    // Tile patternBuffer across each full strip, with each tile offset into the history
+    // Copy patternBuffer across each full strip
     for (int i = 0; i < STRIP_COUNT; ++i) {
         for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-            const int tileIndex = j / patternLength;
-            const int bufferPos = std::min((j % patternLength) + tileIndex * tileOffset, LEDS_PER_STRIP - 1);
-            leds[i][j] = patternBuffer[i][bufferPos];
+            leds[i][j] = patternBuffer[i][j];
         }
     }
 

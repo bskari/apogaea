@@ -43,8 +43,6 @@ struct Configuration_t {
   uint8_t normalizeBandsSwitch; // =1 if switch ON and =0 if OFF
   uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or GRB
-  uint8_t patternLength; // number of LEDs per repeating tile (5..LEDS_PER_STRIP)
-  uint8_t tileOffset;   // how many history positions each successive tile shifts (0 = identical copies)
   uint8_t showConverterLedsSwitch; // =1 if switch ON and =0 if OFF
 };
 Configuration_t configuration;
@@ -126,8 +124,6 @@ void loadConfigFromPreferences(Configuration_t& config) {
   }
   config.normalizeBandsSwitch = preferences.getUChar("nor", config.normalizeBandsSwitch);
   config.rgb = preferences.getUShort("rgb", config.rgb);
-  config.patternLength = preferences.getUChar("pat", config.patternLength);
-  config.tileOffset = preferences.getUChar("off", config.tileOffset);
   config.showConverterLedsSwitch = preferences.getUChar("cnv", config.showConverterLedsSwitch);
   preferences.end();
 }
@@ -148,12 +144,6 @@ void saveConfigFieldsToPreferences(const Configuration_t& config, uint16_t field
   }
   if (fields & (1 << static_cast<uint8_t>(BleConfigField::Speed))) {
     preferences.putChar("spd", config.speedSlider);
-  }
-  if (fields & (1 << static_cast<uint8_t>(BleConfigField::PatternLength))) {
-    preferences.putUChar("pat", config.patternLength);
-  }
-  if (fields & (1 << static_cast<uint8_t>(BleConfigField::TileOffset))) {
-    preferences.putUChar("off", config.tileOffset);
   }
   if (fields & (1 << static_cast<uint8_t>(BleConfigField::Palette))) {
     preferences.putUChar("pal", config.palette);
@@ -273,8 +263,6 @@ void setup() {
   configuration.sensitivitySlider = DEFAULT_SENSITIVITY;
   configuration.rgbButton = 0;
   configuration.rgb = 0;
-  configuration.patternLength = DEFAULT_PATTERN_LENGTH;
-  configuration.tileOffset = DEFAULT_TILE_OFFSET;
   configuration.showConverterLedsSwitch = DEFAULT_SHOW_CONVERTER_LEDS;
 
   // Overlay whatever was last saved to NVS (if anything) on top of the hardcoded defaults above.
@@ -395,8 +383,6 @@ void loop() {
         configuration.brightnessSlider = bleMsg.brightness;
         configuration.sensitivitySlider = bleMsg.sensitivity;
         configuration.speedSlider = bleMsg.speed;
-        configuration.patternLength = bleMsg.patternLength;
-        configuration.tileOffset = bleMsg.tileOffset;
         configuration.palette = bleMsg.palette;
         configuration.normalizeBandsSwitch = bleMsg.normalizeBands;
         configuration.rgbButton = bleMsg.rgbButton;
@@ -515,8 +501,6 @@ void displayLedsFunction(void*) {
           configuration.normalizeBandsSwitch,
           configuration.sensitivitySlider,
           configuration.speedSlider,
-          configuration.patternLength,
-          configuration.tileOffset,
           configuration.rgb,
           configuration.showConverterLedsSwitch);
       }

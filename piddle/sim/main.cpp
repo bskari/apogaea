@@ -13,8 +13,6 @@
 uint8_t brightness_p   = 100;
 uint8_t sensitivity_p  = 50;
 uint8_t speed_p        = 80;
-int     patternLength  = LEDS_PER_STRIP - 5;
-int     tileOffset     = 2;
 Palette palette        = PALETTE_DEFAULT;
 bool    normalizeBands = false;
 
@@ -27,16 +25,12 @@ static void printHelp() {
     printf("  Left/Right  Speed +/- 5\n");
     printf("  ,/.         Sensitivity +/- 5\n");
     printf("  [/]         Previous/Next audio file\n");
-    printf("  -/=         Pattern length -/+ 1\n");
-    printf("  Q/W         Tile offset -/+ 1\n");
     printf("  H           Print help\n");
     printf("  Escape      Quit\n");
-    printf("brightness:%d sensitivity:%d speed:%d patternLength:%d tileOffset:%d palette:%s normalizeBands:%d\n",
+    printf("brightness:%d sensitivity:%d speed:%d palette:%s normalizeBands:%d\n",
         brightness_p,
         sensitivity_p,
         speed_p,
-        patternLength,
-        tileOffset,
         paletteName(palette),
         normalizeBands);
     printf("\n");
@@ -116,15 +110,6 @@ int main(int argc, char* argv[]) {
                     case SDLK_ESCAPE:
                         quit = true;
                         break;
-                    case SDLK_q:
-                        tileOffset = std::min(tileOffset, patternLength - 1);
-                        tileOffset = std::max(0, tileOffset - 1);
-                        printf("Tile offset: %d\n", tileOffset);
-                        break;
-                    case SDLK_w:
-                        tileOffset = std::min(LEDS_PER_STRIP - 1, tileOffset + 1);
-                        printf("Tile offset: %d\n", tileOffset);
-                        break;
                     case SDLK_c:
                         palette = static_cast<Palette>((palette + 1) % PALETTE_COUNT);
                         printf("Palette: %s\n", paletteName(palette));
@@ -181,16 +166,6 @@ int main(int argc, char* argv[]) {
                             printf("Already at first file.\n");
                         }
                         break;
-                    case SDLK_EQUALS:
-                        patternLength = std::min(LEDS_PER_STRIP, patternLength + 1);
-                        printf("Pattern length: %d\n", patternLength);
-                        break;
-                    case SDLK_MINUS:
-                        patternLength = std::max(5, patternLength - 1);
-                        tileOffset = std::min(tileOffset, patternLength - 1);
-                        printf("Pattern length: %d\n", patternLength);
-                        printf("Tile offset: %d\n", tileOffset);
-                        break;
                     case SDLK_h:
                         printHelp();
                         break;
@@ -225,7 +200,7 @@ int main(int argc, char* argv[]) {
         float noteValues[NOTE_COUNT];
         processDSP(dsp, window, sensitivity_p, noteValues);
 
-        renderFft(leds, noteValues, palette, normalizeBands, SDL_GetTicks(), patternLength, tileOffset);
+        renderFft(leds, noteValues, palette, normalizeBands, SDL_GetTicks());
 
         // Apply brightness scale to a copy for display (don't modify the LED state)
         const float scale = static_cast<float>(brightness_p) / 100.0f;

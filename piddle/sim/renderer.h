@@ -33,8 +33,6 @@ enum Palette : uint8_t {
 const char* paletteName(Palette p);
 
 // millis: current time in milliseconds (for hue animation).
-// patternLength: number of LEDs per repeating tile (5..LEDS_PER_STRIP).
-// tileOffset: history positions each successive tile shifts (0 = identical copies).
 void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
                const float noteValues[NOTE_COUNT],
-               Palette palette, bool normalizeBands, uint32_t millis, int patternLength, int tileOffset);
+               Palette palette, bool normalizeBands, uint32_t millis);
