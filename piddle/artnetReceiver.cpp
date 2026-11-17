@@ -1,3 +1,5 @@
+// Only compiled into the ArtNet image (see ARTNET_IMAGE in piddle.ino).
+#ifdef ARTNET_IMAGE
 #include "artnetReceiver.hpp"
 
 #include <string.h>
@@ -192,3 +194,4 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
   udp.write(reply, sizeof(reply));
   udp.endPacket();
 }
+#endif // ARTNET_IMAGE

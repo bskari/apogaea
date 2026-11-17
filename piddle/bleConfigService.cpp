@@ -1,3 +1,5 @@
+// Only compiled into the main (Bluetooth) image (see ARTNET_IMAGE in piddle.ino).
+#ifndef ARTNET_IMAGE
 #include "bleConfigService.hpp"
 #include <Arduino.h>
 #include <BLEDevice.h>
@@ -172,3 +174,4 @@ bool pollBleConfigService(BleConfigMessage_t& out, uint16_t& changedFields) {
 
   return true;
 }
+#endif // ARTNET_IMAGE

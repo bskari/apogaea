@@ -10,7 +10,9 @@ Piddle is an audio-reactive LED display system built on ESP32. It captures audio
 
 ```bash
 ./compile.sh --v2-1-pins        # Compile with Arduino CLI - use --v2-1-pins, NOT --v2-2-pins (that's the current board)
-./upload.sh                     # Upload to /dev/ttyUSB0
+./compile.sh --v2-1-pins --artnet # Compile the ArtNet image (build/artnet); plain compile is build/main
+./upload.sh                     # Flash build/main (app0 + bootloader + partitions)
+./upload.sh --artnet            # Flash build/artnet into the second app slot (app1)
 ./serial.sh                     # Monitor serial output at 115200 baud
 ```
 

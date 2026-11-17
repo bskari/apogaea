@@ -18,13 +18,22 @@
 // FWIW, 3.1.2 also crashes on classic Bluetooth disconnect
 #endif
 
+#include <esp_ota_ops.h>
+
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
-#include "bleConfigService.hpp"
-#include "bluetoothAudio.hpp"
+#include "bleConfigService.hpp" // Header only; just the BleConfigField enum used for NVS saving
 #include "constants.hpp"
 #include "spectrumAnalyzer.hpp"
 
-#include "artnetReceiver.hpp"
+// Linking WiFi costs ~16 KB of static RAM, which the Bluetooth stack needs, so ArtNet and
+// Bluetooth live in two separate firmware images (two OTA app slots) that switch to each other
+// with a button press. Compile with -DARTNET_IMAGE (compile.sh --artnet) for the ArtNet image;
+// without it you get the main image (Bluetooth audio + BLE config, no WiFi).
+#ifdef ARTNET_IMAGE
+#  include "artnetReceiver.hpp"
+#else
+#  include "bluetoothAudio.hpp"
+#endif
 
 struct Configuration_t {
   int8_t brightnessSlider; // from 0 to 100
@@ -52,10 +61,12 @@ TaskHandle_t collectSamplesTask;
 TaskHandle_t displayLedsTask;
 I2SClocklessLedDriver driver;
 
+#ifdef ARTNET_IMAGE
 static volatile bool artNetMode = false;
-static volatile bool artNetModeRequested = false;
-RTC_NOINIT_ATTR static bool bootIntoArtNetMode = false;
 volatile bool artNetActive = false;
+#endif
+// Set from the button interrupt: switch to the other firmware image (main <-> ArtNet).
+static volatile bool imageSwitchRequested = false;
 
 
 // BLE config mode is only entered on request (button press, see buttonInterrupt/bleConfigRequested
@@ -63,8 +74,8 @@ volatile bool artNetActive = false;
 // configures us over BLE within this window of boot or the last received config message, give up
 // on BLE and reboot back into Bluetooth audio instead.
 const uint32_t BLE_CONFIG_TIMEOUT_MS = 60000;
-static bool bleConfigActive = false;
-static uint32_t bleConfigLastActivityMillis = 0;
+[[maybe_unused]] static bool bleConfigActive = false;
+[[maybe_unused]] static uint32_t bleConfigLastActivityMillis = 0;
 static volatile bool bleConfigRequested = false;
 
 // Switching from BLE to classic Bluetooth (A2DP) in the same running process leaves Bluedroid's
@@ -81,10 +92,15 @@ static volatile bool bleConfigRequested = false;
 // completely untouched by the loader, so it actually survives. The tradeoff is it's uninitialized
 // garbage on a true power-on, so we only trust it when esp_reset_reason() confirms this was our
 // own ESP.restart() call (see setup()).
-RTC_NOINIT_ATTR static bool bootIntoBleConfig;
+//
+// Both are guarded by a magic number rather than a bool because the other firmware image may lay
+// out RTC memory differently, so after an image switch these locations can hold arbitrary leftovers.
+static constexpr uint32_t RTC_MAGIC = 0xB10CC0DE;
+RTC_NOINIT_ATTR static uint32_t bootIntoBleConfigMagic;
 // Snapshot of `configuration` taken right before the restarts above, so settings aren't lost
-// across the reboot into BLE config mode or back out of it.
+// across the reboot into BLE config mode or back out of it. Valid only if the magic matches.
 RTC_NOINIT_ATTR static Configuration_t rtcSavedConfiguration;
+RTC_NOINIT_ATTR static uint32_t rtcSavedConfigurationMagic;
 
 Preferences preferences;
 // Debounces Preferences (NVS) writes while the BLE config page is actively streaming slider
@@ -184,26 +200,58 @@ void IRAM_ATTR buttonInterrupt() {
       return; // glitch / debounce
     }
 
+#ifdef ARTNET_IMAGE
+    imageSwitchRequested = true;
+#else
     if (bleConfigActive) {
-      artNetModeRequested = true;
+      imageSwitchRequested = true;
     } else {
       bleConfigRequested = true;
     }
+#endif
   }
+}
+
+// Persists the current configuration for the next boot of this same image (it survives the reboot
+// in RTC memory, and is also written to NVS).
+[[maybe_unused]] static void saveStateForReboot() {
+  portENTER_CRITICAL(&configMux);
+  rtcSavedConfiguration = configuration;
+  portEXIT_CRITICAL(&configMux);
+  rtcSavedConfigurationMagic = RTC_MAGIC;
+  saveConfigFieldsToPreferences(configuration, pendingSaveFields);
+  pendingSaveFields = 0;
+}
+
+// Selects the other OTA app slot (main <-> ArtNet) as the next boot partition. The other image
+// must have been flashed (see upload.sh); otherwise this fails and we stay on the current one.
+static bool selectOtherImage() {
+  const esp_partition_t* other = esp_ota_get_next_update_partition(nullptr);
+  if (other == nullptr) {
+    Serial.println("No other OTA partition");
+    return false;
+  }
+  const esp_err_t err = esp_ota_set_boot_partition(other);
+  if (err != ESP_OK) {
+    Serial.printf("Can't boot other image (%s) - is it flashed?\n", esp_err_to_name(err));
+    return false;
+  }
+  return true;
 }
 
 void setup() {
   Serial.begin(115200);
   Serial.println("Setup");
 
-  // bootIntoBleConfig lives in RTC_NOINIT_ATTR memory, so it's garbage on a genuine power-on - only
-  // trust it when the reset reason confirms it was actually our own ESP.restart() call below. A
-  // genuine power-on always boots straight into Bluetooth audio; BLE config mode is only entered
-  // when requested via the boot button.
-  if (esp_reset_reason() != ESP_RST_SW) {
-    bootIntoBleConfig = false;
-    bootIntoArtNetMode = false;
-  }
+  // The RTC_NOINIT values are garbage on a genuine power-on - only trust them when the reset reason
+  // confirms it was our own ESP.restart() call, and the magic number matches. A genuine power-on
+  // always boots straight into the default mode; BLE config mode is only entered when requested
+  // via the boot button.
+  const bool softReset = esp_reset_reason() == ESP_RST_SW;
+  [[maybe_unused]] const bool enterBleConfig = softReset && bootIntoBleConfigMagic == RTC_MAGIC;
+  const bool restoreRtcConfig = softReset && rtcSavedConfigurationMagic == RTC_MAGIC;
+  bootIntoBleConfigMagic = 0;
+  rtcSavedConfigurationMagic = 0;
 
   // This had to be done first, but I think I fixed the bug that was causing problems? I don't want
   // to test if it's fixed, so I'm leaving it first now
@@ -232,7 +280,7 @@ void setup() {
   // Overlay whatever was last saved to NVS (if anything) on top of the hardcoded defaults above.
   loadConfigFromPreferences(configuration);
 
-  if (esp_reset_reason() == ESP_RST_SW) {
+  if (restoreRtcConfig) {
     // Restore whatever was configured right before this reboot (into or out of BLE config mode).
     configuration = rtcSavedConfiguration;
   }
@@ -250,25 +298,25 @@ void setup() {
     &collectSamplesTask, // Task handle.
     1); // Core where the task should run
 
-  if (bootIntoBleConfig) {
-    bootIntoBleConfig = false;
+#ifdef ARTNET_IMAGE
+  Serial.println("ArtNet image: starting ArtNet");
+  artNetPixels = reinterpret_cast<CRGB*>(leds);
+  setupArtNet(collectSamplesTask, &artNetMode);
+#else
+  if (enterBleConfig) {
     bleConfigActive = true;
     configuration.rgbButton = 0;
     Serial.println("Setting up BLE config service (requested via button press)");
     setupBleConfigService();
     bleConfigLastActivityMillis = millis();
     Serial.println("Done setting up BLE config service");
-  } else if (bootIntoArtNetMode) {
-    Serial.println("Booting into ArtNet mode");
-    artNetPixels = reinterpret_cast<CRGB*>(leds);
-    setupArtNet(collectSamplesTask, &artNetMode);
-    // Don't start any Bluetooth stacks
   } else {
     bleConfigActive = false;
     Serial.println("Booting into Bluetooth audio");
     configuration.rgbButton = 0;
     setupBluetoothAudio(collectSamplesTask, "Phonic Bloom");
   }
+#endif
 
   // Test all the logic level converter LEDs
   uint8_t hue = 0;
@@ -305,17 +353,14 @@ void setup() {
 }
 
 void loop() {
+#ifndef ARTNET_IMAGE
   if (bleConfigRequested) {
     bleConfigRequested = false;
     if (!bleConfigActive) {
       Serial.println("Button pressed - rebooting into BLE config mode");
       teardownBluetoothAudio();
-      portENTER_CRITICAL(&configMux);
-      rtcSavedConfiguration = configuration;
-      portEXIT_CRITICAL(&configMux);
-      saveConfigFieldsToPreferences(configuration, pendingSaveFields);
-      pendingSaveFields = 0;
-      bootIntoBleConfig = true;
+      saveStateForReboot();
+      bootIntoBleConfigMagic = RTC_MAGIC;
       delay(100); // let the log line above actually flush over serial
       ESP.restart();
     }
@@ -325,12 +370,7 @@ void loop() {
     if (!isBleClientConnected() && millis() - bleConfigLastActivityMillis > BLE_CONFIG_TIMEOUT_MS) {
       Serial.println("Rebooting into Bluetooth audio");
       teardownBleConfigService();
-      portENTER_CRITICAL(&configMux);
-      rtcSavedConfiguration = configuration;
-      portEXIT_CRITICAL(&configMux);
-      saveConfigFieldsToPreferences(configuration, pendingSaveFields);
-      pendingSaveFields = 0;
-      bootIntoBleConfig = false;
+      saveStateForReboot();
       delay(100); // let the log line above actually flush over serial
       ESP.restart();
     } else {
@@ -370,13 +410,22 @@ void loop() {
     }
   }
 
-  if (artNetModeRequested) {
-    artNetModeRequested = false;
-    bootIntoArtNetMode = true;
-    Serial.println("Button pressed - rebooting into ArtNet mode");
-    teardownBleConfigService();
-    delay(100); // let the log line above actually flush over serial
-    ESP.restart();
+#endif // !ARTNET_IMAGE
+
+  if (imageSwitchRequested) {
+    imageSwitchRequested = false;
+    Serial.println("Button pressed - switching firmware image");
+    if (selectOtherImage()) {
+      // The other image reads its configuration from NVS (RTC memory isn't shared reliably).
+      pendingSaveFields = 0xFFFF;
+      saveConfigFieldsToPreferences(configuration, pendingSaveFields);
+      pendingSaveFields = 0;
+#ifndef ARTNET_IMAGE
+      teardownBleConfigService();
+#endif
+      delay(100); // let the log line above actually flush over serial
+      ESP.restart();
+    }
   }
 
   // Debounced NVS save: while BLE config is actively streaming slider updates (every ~40ms while
@@ -429,6 +478,7 @@ void swapChannels(uint16_t rgbBitFlag) {
 
 void displayLedsFunction(void*) {
   while (1) {
+#ifdef ARTNET_IMAGE
     if (artNetMode && artNetActive) {
       // ArtNet receiver writes directly into leds (artNetPixels points at leds)
       while (xSemaphoreTake(artNetPixelsMutex, 0) == pdFALSE) {
@@ -446,6 +496,7 @@ void displayLedsFunction(void*) {
       delay(25); // ~40 fps
       continue;
     }
+#endif
 
     // Audio-reactive mode (default, and resumed after ArtNet timeout)
     for (int i = 0; i < 10; ++i) {

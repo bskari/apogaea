@@ -1,3 +1,5 @@
+// Only compiled into the main (Bluetooth) image (see ARTNET_IMAGE in piddle.ino).
+#ifndef ARTNET_IMAGE
 #include "constants.hpp"
 #include <Arduino.h>
 #include <BluetoothA2DPSink.h>
@@ -45,3 +47,4 @@ void setupBluetoothAudio(TaskHandle_t collectSamplesTask, const char* deviceName
   a2dp_sink.set_stream_reader(audioDataCallback, false);
   a2dp_sink.start(deviceName);
 }
+#endif // ARTNET_IMAGE
