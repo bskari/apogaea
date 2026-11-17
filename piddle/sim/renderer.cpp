@@ -77,12 +77,14 @@ static CRGB paletteColor(Palette palette, uint8_t pos, uint8_t value) {
     return hsv2rgb(CHSV(hue, spec.sat, value));
 }
 
-static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
+// leds doubles as the scrolling history. The display-only dim of position 0 is undone at the start
+// of the next frame from this copy, so it doesn't scroll into the history.
+static CRGB savedFirstLeds[STRIP_COUNT];
 
-static void slideDown(int count) {
-    const int byteCount = (LEDS_PER_STRIP - count) * sizeof(patternBuffer[0][0]);
+static void slideDown(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP], int count) {
+    const int byteCount = (LEDS_PER_STRIP - count) * sizeof(leds[0][0]);
     for (int i = 0; i < STRIP_COUNT; ++i) {
-        memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
+        memmove(&leds[i][count], &leds[i][0], byteCount);
     }
 }
 
@@ -98,12 +100,15 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
     const int c4Index  = 11;
     const int startNote = c4Index - 4; // = 7
 
-    slideDown(SLIDE_COUNT);
+    for (int i = 0; i < STRIP_COUNT; ++i) {
+        leds[i][0] = savedFirstLeds[i];
+    }
+    slideDown(leds, SLIDE_COUNT);
 
-    // Clear the head positions of the pattern buffer after slide
+    // Clear the head positions of the history after slide
     for (int i = 0; i < STRIP_COUNT; ++i) {
         for (int j = 0; j < SLIDE_COUNT; ++j) {
-            patternBuffer[i][j] = CRGB::Black;
+            leds[i][j] = CRGB::Black;
         }
     }
 
@@ -157,7 +162,7 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
 
         CRGB color = paletteColor(palette, hue, gammaCorrected);
         for (int i = 0; i < SLIDE_COUNT; ++i) {
-            patternBuffer[strip][i] += color;
+            leds[strip][i] += color;
         }
 
         ++strip;
@@ -170,11 +175,8 @@ void renderFft(CRGB leds[STRIP_COUNT][LEDS_PER_STRIP],
         }
     }
 
-    // Copy patternBuffer across each full strip
     for (int i = 0; i < STRIP_COUNT; ++i) {
-        for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-            leds[i][j] = patternBuffer[i][j];
-        }
+        savedFirstLeds[i] = leds[i][0];
     }
 
     // Dim the diode LED at physical position 0

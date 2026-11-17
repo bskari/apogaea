@@ -70,7 +70,9 @@ extern I2SClocklessLedDriver driver;
   extern bool logDebug;
 #endif
 
-static CRGB patternBuffer[STRIP_COUNT][LEDS_PER_STRIP];
+// leds doubles as the scrolling history. The display-only edits to position 0 (dim/black) are
+// undone at the start of the next frame from this copy, so they don't scroll into the history.
+static CRGB savedFirstLeds[STRIP_COUNT];
 static unsigned char brightness = 64;
 
 static void computeFft();
@@ -160,6 +162,9 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
   // on the outside edge, going up, and the other notes to trickle down from the center.
 
   // Slide down more than once to make it move faster (just 1 for developing)
+  for (int i = 0; i < STRIP_COUNT; ++i) {
+    leds[i][0] = savedFirstLeds[i];
+  }
   slideDown(SLIDE_COUNT);
 
   float noteValues[NOTE_COUNT];
@@ -182,7 +187,7 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
   int strip = 0;
   for (int i = 0; i < STRIP_COUNT; ++i) {
     for (int j = 0; j < SLIDE_COUNT; ++j) {
-      patternBuffer[i][j] = CRGB::Black;
+      leds[i][j] = CRGB::Black;
     }
   }
 
@@ -243,7 +248,7 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
         color.g = tmp;
       }
       for (int i = 0; i < SLIDE_COUNT; ++i) {
-        patternBuffer[strip][i] += color;
+        leds[strip][i] += color;
       }
     }
     ++note;
@@ -259,11 +264,11 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
       for (int i = 0; i < SLIDE_COUNT; ++i) {
-        patternBuffer[strip][LEDS_PER_STRIP - 1 - i] += paletteColor(palette, hue, gammaCorrected);
+        leds[strip][LEDS_PER_STRIP - 1 - i] += paletteColor(palette, hue, gammaCorrected);
         if ((rgb >> strip) & 1) {
-          const uint8_t tmp = patternBuffer[strip][LEDS_PER_STRIP - 1 - i].r;
-          patternBuffer[strip][LEDS_PER_STRIP - 1 - i].r = patternBuffer[strip][LEDS_PER_STRIP - 1 - i].g;
-          patternBuffer[strip][LEDS_PER_STRIP - 1 - i].g = tmp;
+          const uint8_t tmp = leds[strip][LEDS_PER_STRIP - 1 - i].r;
+          leds[strip][LEDS_PER_STRIP - 1 - i].r = leds[strip][LEDS_PER_STRIP - 1 - i].g;
+          leds[strip][LEDS_PER_STRIP - 1 - i].g = tmp;
         }
       }
     }
@@ -279,11 +284,8 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
     }
   }
 
-  // Copy patternBuffer across each full strip
   for (int i = 0; i < STRIP_COUNT; ++i) {
-    for (int j = 0; j < LEDS_PER_STRIP; ++j) {
-      leds[i][j] = patternBuffer[i][j];
-    }
+    savedFirstLeds[i] = leds[i][0];
   }
 
   // Dim the diode LED at physical position 0 (logic level shifter, for testing only)
@@ -535,9 +537,9 @@ void displaySpectrumAnalyzer(
 }
 
 static void slideDown(const int count) {
-  const int byteCount = (LEDS_PER_STRIP - count) * sizeof(patternBuffer[0][0]);
+  const int byteCount = (LEDS_PER_STRIP - count) * sizeof(leds[0][0]);
   for (int i = 0; i < STRIP_COUNT; ++i) {
-    ::memmove(&patternBuffer[i][count], &patternBuffer[i][0], byteCount);
+    ::memmove(&leds[i][count], &leds[i][0], byteCount);
   }
 }
 
