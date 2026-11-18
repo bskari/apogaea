@@ -10,6 +10,7 @@
 // One-off: when this song goes completely silent at its break, blank the LEDs instantly instead of
 // letting the spectrum shift down to the end of the strips.
 static const char* const BLANK_TRACK_TITLE = "touch-no-voices";
+static const char* const BLANK_TRACK_TITLE_2 = "Touch (feat. Paul Williams)";
 static const uint32_t BLANK_AFTER_MS = (7 * 60 + 35) * 1000; // 7:35 into the song
 static const uint32_t BRIGHTNESS_RAMP_END_MS = (7 * 60 + 45) * 1000; // 7:45 into the song
 static const int BRIGHTNESS_RAMP_STEP = 10;
@@ -82,7 +83,8 @@ static void onMetadata(uint8_t attributeId, const uint8_t* text) {
   blankDone = false;
   quietSampleRun = 0;
   blankTrackStartMs = millis();
-  blankTrackPlaying = strcmp(lastTitle, BLANK_TRACK_TITLE) == 0;
+  blankTrackPlaying = strcmp(lastTitle, BLANK_TRACK_TITLE) == 0 ||
+                     strcmp(lastTitle, BLANK_TRACK_TITLE_2) == 0;
 }
 
 static void audioDataCallback(const uint8_t* data, uint32_t length) {
