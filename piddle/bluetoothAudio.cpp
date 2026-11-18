@@ -11,6 +11,9 @@
 // letting the spectrum shift down to the end of the strips.
 static const char* const BLANK_TRACK_TITLE = "touch-no-voices";
 static const uint32_t BLANK_AFTER_MS = (7 * 60 + 35) * 1000; // 7:35 into the song
+static const uint32_t BRIGHTNESS_RAMP_END_MS = (7 * 60 + 45) * 1000; // 7:45 into the song
+static const int BRIGHTNESS_RAMP_STEP = 10;                // added to the slider brightness per interval
+static const uint32_t BRIGHTNESS_RAMP_INTERVAL_MS = 500;
 static const uint32_t BLANK_LOW_SAMPLE_COUNT = 1000; // consecutive quiet samples
 static const uint32_t QUIET_SAMPLE_CUTOFF = 100;
 
@@ -29,6 +32,23 @@ static void resetBlankState() {
   blankTrackPlaying = false;
   blankDone = false;
   quietSampleRun = 0;
+}
+
+// Transient brightness boost for the BLANK_TRACK_TITLE track: starts at BLANK_AFTER_MS, grows by
+// BRIGHTNESS_RAMP_STEP every BRIGHTNESS_RAMP_INTERVAL_MS, and is 0 again once the LEDs are blanked,
+// at BRIGHTNESS_RAMP_END_MS, or on a title change / disconnect / teardown (all of which clear
+// blankTrackPlaying, set blankDone or move blankTrackStartMs). Derived from the volatile state on
+// each call, so nothing needs clearing and the user's stored brightness is never touched.
+// Called from the display task.
+int getBrightnessBoost() {
+  const bool playing = blankTrackPlaying;
+  const bool done = blankDone;
+  const uint32_t elapsedMs = millis() - blankTrackStartMs;
+  if (!bluetoothActive || !playing || done || elapsedMs < BLANK_AFTER_MS || elapsedMs >= BRIGHTNESS_RAMP_END_MS) {
+    return 0;
+  }
+  const uint32_t steps = (elapsedMs - BLANK_AFTER_MS) / BRIGHTNESS_RAMP_INTERVAL_MS;
+  return min<uint32_t>(steps * BRIGHTNESS_RAMP_STEP, 255);
 }
 
 static void onConnectionStateChanged(esp_a2d_connection_state_t state, void*) {

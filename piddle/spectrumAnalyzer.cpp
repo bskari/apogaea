@@ -9,6 +9,7 @@
 
 
 #include "I2SClocklessLedDriver/I2SClocklessLedDriver.h"
+#include "bluetoothAudio.hpp"
 #include "constants.hpp"
 #include "esp32-fft.hpp"
 
@@ -462,7 +463,11 @@ void displaySpectrumAnalyzer(
     const auto render_us = micros() - part_us;
   #endif
 
-  const int sliderBrightness = static_cast<float>(brightness_p) * 255.0f / 100.0f;
+  // The boost is added before the power limiter below, so the power budget and diode cap still apply.
+  const int sliderBrightness = min(
+    static_cast<int>(static_cast<float>(brightness_p) * 255.0f / 100.0f) + getBrightnessBoost(),
+    255
+  );
 
   int diodeBrightness = 255;
   if (showConverterLeds) {
