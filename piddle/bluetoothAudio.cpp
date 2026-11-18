@@ -10,8 +10,9 @@
 // One-off: when this song goes completely silent at its break, blank the LEDs instantly instead of
 // letting the spectrum shift down to the end of the strips.
 static const char* const BLANK_TRACK_TITLE = "touch-no-voices";
-static const uint32_t BLANK_AFTER_MS = (7 * 60 + 40) * 1000; // 7:40 into the song
-static const uint32_t BLANK_ZERO_SAMPLE_COUNT = 100;         // consecutive all-zero samples
+static const uint32_t BLANK_AFTER_MS = (7 * 60 + 35) * 1000; // 7:35 into the song
+static const uint32_t BLANK_LOW_SAMPLE_COUNT = 1000; // consecutive quiet samples
+static const uint32_t QUIET_SAMPLE_CUTOFF = 100;
 
 static BluetoothA2DPSink a2dp_sink;
 static TaskHandle_t micTask = nullptr;
@@ -22,12 +23,12 @@ static volatile bool blankTrackPlaying = false; // latest title is BLANK_TRACK_T
 // Approximate: starts when the title is received, not when the audio actually starts.
 static volatile uint32_t blankTrackStartMs = 0;
 static volatile bool blankDone = false;         // already blanked for this play of the track
-static uint32_t zeroSampleRun = 0;              // audio callback only
+static uint32_t quietSampleRun = 0;              // audio callback only
 
 static void resetBlankState() {
   blankTrackPlaying = false;
   blankDone = false;
-  zeroSampleRun = 0;
+  quietSampleRun = 0;
 }
 
 static void onConnectionStateChanged(esp_a2d_connection_state_t state, void*) {
@@ -65,7 +66,7 @@ static void onMetadata(uint8_t attributeId, const uint8_t* text) {
 
   // A title change (re-)arms the blank and restarts the song timer.
   blankDone = false;
-  zeroSampleRun = 0;
+  quietSampleRun = 0;
   blankTrackStartMs = millis();
   blankTrackPlaying = strcmp(lastTitle, BLANK_TRACK_TITLE) == 0;
 }
@@ -74,24 +75,24 @@ static void audioDataCallback(const uint8_t* data, uint32_t length) {
   writeBtSamples(data, length);
 
   // Count consecutive silent samples across callbacks. A sample here is one stereo frame (the data
-  // is interleaved L/R int16, 4 bytes per frame); it is silent when both channels are 0.
+  // is interleaved L/R int16, 4 bytes per frame)
   const int16_t* samples = reinterpret_cast<const int16_t*>(data);
   const uint32_t frameCount = length / 4;
   for (uint32_t i = 0; i < frameCount; ++i) {
-    if (samples[i * 2] == 0 && samples[i * 2 + 1] == 0) {
-      ++zeroSampleRun;
+    if (labs(samples[i * 2]) < QUIET_SAMPLE_CUTOFF && labs(samples[i * 2 + 1]) < QUIET_SAMPLE_CUTOFF) {
+      ++quietSampleRun;
     } else {
-      zeroSampleRun = 0;
+      quietSampleRun = 0;
     }
   }
 
   if (
     bluetoothActive && blankTrackPlaying && !blankDone &&
     millis() - blankTrackStartMs >= BLANK_AFTER_MS &&
-    zeroSampleRun >= BLANK_ZERO_SAMPLE_COUNT
+    quietSampleRun >= BLANK_LOW_SAMPLE_COUNT
   ) {
     blankDone = true;
-    Serial.printf("Silence in \"%s\" - blanking LEDs\n", BLANK_TRACK_TITLE);
+    Serial.println("Blanking LEDs");
     requestBlankLeds();
   }
 }
