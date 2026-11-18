@@ -12,15 +12,15 @@
 static const char* const BLANK_TRACK_TITLE = "touch-no-voices";
 static const uint32_t BLANK_AFTER_MS = (7 * 60 + 35) * 1000; // 7:35 into the song
 static const uint32_t BRIGHTNESS_RAMP_END_MS = (7 * 60 + 45) * 1000; // 7:45 into the song
-static const int BRIGHTNESS_RAMP_STEP = 10;                // added to the slider brightness per interval
+static const int BRIGHTNESS_RAMP_STEP = 10;
 static const uint32_t BRIGHTNESS_RAMP_INTERVAL_MS = 500;
 static const uint32_t BLANK_LOW_SAMPLE_COUNT = 1000; // consecutive quiet samples
-static const uint32_t QUIET_SAMPLE_CUTOFF = 100;
+static const uint32_t QUIET_SAMPLE_CUTOFF = 120;
 
 static BluetoothA2DPSink a2dp_sink;
 static TaskHandle_t micTask = nullptr;
 
-static char lastTitle[128] = "";
+static char lastTitle[64] = "";
 // Written from the title callback, read from the audio callback (both Bluetooth stack tasks).
 static volatile bool blankTrackPlaying = false; // latest title is BLANK_TRACK_TITLE
 // Approximate: starts when the title is received, not when the audio actually starts.
@@ -34,12 +34,6 @@ static void resetBlankState() {
   quietSampleRun = 0;
 }
 
-// Transient brightness boost for the BLANK_TRACK_TITLE track: starts at BLANK_AFTER_MS, grows by
-// BRIGHTNESS_RAMP_STEP every BRIGHTNESS_RAMP_INTERVAL_MS, and is 0 again once the LEDs are blanked,
-// at BRIGHTNESS_RAMP_END_MS, or on a title change / disconnect / teardown (all of which clear
-// blankTrackPlaying, set blankDone or move blankTrackStartMs). Derived from the volatile state on
-// each call, so nothing needs clearing and the user's stored brightness is never touched.
-// Called from the display task.
 int getBrightnessBoost() {
   const bool playing = blankTrackPlaying;
   const bool done = blankDone;
