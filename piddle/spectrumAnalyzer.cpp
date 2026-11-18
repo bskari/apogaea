@@ -63,6 +63,11 @@ static float windowingConstants[SAMPLE_COUNT / 2 + 1];
 static i2s_chan_handle_t rxHandle;
 
 volatile bool bluetoothActive = false;
+static volatile bool blankLedsRequested = false;
+
+void requestBlankLeds() {
+  blankLedsRequested = true;
+}
 
 extern CRGB leds[STRIP_COUNT][LEDS_PER_STRIP];
 extern I2SClocklessLedDriver driver;
@@ -368,6 +373,14 @@ void displaySpectrumAnalyzer(
   #if SHOW_VOLTAGE
     static int voltageOnes = 4, voltageTenths = 7, voltageHundredths = 1;
   #endif
+
+  if (blankLedsRequested) {
+    blankLedsRequested = false;
+    fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
+    driver.showPixels(NO_WAIT);
+    // Skip this iteration's render so it can't redraw over the blank.
+    return;
+  }
 
   #if LOG_TIMING
     auto part_us = micros();

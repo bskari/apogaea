@@ -7,8 +7,28 @@
 #include "bluetoothAudio.hpp"
 #include "spectrumAnalyzer.hpp"
 
+// One-off: when this song goes completely silent at its break, blank the LEDs instantly instead of
+// letting the spectrum shift down to the end of the strips.
+static const char* const BLANK_TRACK_TITLE = "touch-no-voices";
+static const uint32_t BLANK_AFTER_MS = (7 * 60 + 40) * 1000; // 7:40 into the song
+static const uint32_t BLANK_ZERO_SAMPLE_COUNT = 100;         // consecutive all-zero samples
+
 static BluetoothA2DPSink a2dp_sink;
 static TaskHandle_t micTask = nullptr;
+
+static char lastTitle[128] = "";
+// Written from the title callback, read from the audio callback (both Bluetooth stack tasks).
+static volatile bool blankTrackPlaying = false; // latest title is BLANK_TRACK_TITLE
+// Approximate: starts when the title is received, not when the audio actually starts.
+static volatile uint32_t blankTrackStartMs = 0;
+static volatile bool blankDone = false;         // already blanked for this play of the track
+static uint32_t zeroSampleRun = 0;              // audio callback only
+
+static void resetBlankState() {
+  blankTrackPlaying = false;
+  blankDone = false;
+  zeroSampleRun = 0;
+}
 
 static void onConnectionStateChanged(esp_a2d_connection_state_t state, void*) {
   if (state == ESP_A2D_CONNECTION_STATE_CONNECTED) {
@@ -17,11 +37,15 @@ static void onConnectionStateChanged(esp_a2d_connection_state_t state, void*) {
       vTaskSuspend(micTask);
     }
     bluetoothActive = true;
+    resetBlankState();
   } else if (state == ESP_A2D_CONNECTION_STATE_DISCONNECTED) {
     Serial.println("BT audio disconnected - reverting to microphone");
     // Clear bluetoothActive before resuming so the display task stops reading
     // BT-style (no sign fix) before the mic task starts writing again.
     bluetoothActive = false;
+    // Forget the title so the same song received after reconnecting counts as a new play.
+    lastTitle[0] = '\0';
+    resetBlankState();
     if (micTask) {
       vTaskResume(micTask);
     }
@@ -33,21 +57,49 @@ static void onMetadata(uint8_t attributeId, const uint8_t* text) {
   if (attributeId != ESP_AVRC_MD_ATTR_TITLE) {
     return;
   }
-  static char lastTitle[128] = "";
   if (strncmp(lastTitle, (const char*)text, sizeof(lastTitle) - 1) == 0) {
     return;
   }
   strlcpy(lastTitle, (const char*)text, sizeof(lastTitle));
   Serial.printf("Track title: %s\n", lastTitle);
+
+  // A title change (re-)arms the blank and restarts the song timer.
+  blankDone = false;
+  zeroSampleRun = 0;
+  blankTrackStartMs = millis();
+  blankTrackPlaying = strcmp(lastTitle, BLANK_TRACK_TITLE) == 0;
 }
 
 static void audioDataCallback(const uint8_t* data, uint32_t length) {
   writeBtSamples(data, length);
+
+  // Count consecutive silent samples across callbacks. A sample here is one stereo frame (the data
+  // is interleaved L/R int16, 4 bytes per frame); it is silent when both channels are 0.
+  const int16_t* samples = reinterpret_cast<const int16_t*>(data);
+  const uint32_t frameCount = length / 4;
+  for (uint32_t i = 0; i < frameCount; ++i) {
+    if (samples[i * 2] == 0 && samples[i * 2 + 1] == 0) {
+      ++zeroSampleRun;
+    } else {
+      zeroSampleRun = 0;
+    }
+  }
+
+  if (
+    bluetoothActive && blankTrackPlaying && !blankDone &&
+    millis() - blankTrackStartMs >= BLANK_AFTER_MS &&
+    zeroSampleRun >= BLANK_ZERO_SAMPLE_COUNT
+  ) {
+    blankDone = true;
+    Serial.printf("Silence in \"%s\" - blanking LEDs\n", BLANK_TRACK_TITLE);
+    requestBlankLeds();
+  }
 }
 
 void teardownBluetoothAudio() {
   a2dp_sink.end(true); // true = release BT/radio resources
   bluetoothActive = false;
+  resetBlankState();
   if (micTask) {
     vTaskResume(micTask);
   }

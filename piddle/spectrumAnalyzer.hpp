@@ -16,4 +16,8 @@ void writeBtSamples(const uint8_t* stereoData, uint32_t length);
 // When true, displaySpectrumAnalyzer skips the I2S sign-fix and the mic task is suspended.
 extern volatile bool bluetoothActive;
 
+// Ask the display task to turn every LED off and show immediately (skipping the shift-down).
+// Safe to call from another task; handled at the start of the next displaySpectrumAnalyzer call.
+void requestBlankLeds();
+
 #endif
