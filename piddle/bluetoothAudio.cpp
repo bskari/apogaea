@@ -16,7 +16,7 @@ static const uint32_t BRIGHTNESS_RAMP_END_MS = (7 * 60 + 45) * 1000; // 7:45 int
 static const int BRIGHTNESS_RAMP_STEP = 10;
 static const uint32_t BRIGHTNESS_RAMP_INTERVAL_MS = 500;
 static const uint32_t BLANK_LOW_SAMPLE_COUNT = 1000; // consecutive quiet samples
-static const uint32_t QUIET_SAMPLE_CUTOFF = 120;
+static const float QUIET_SAMPLE_CUTOFF = .20;
 
 static BluetoothA2DPSink a2dp_sink;
 static TaskHandle_t micTask = nullptr;
@@ -26,8 +26,9 @@ static char lastTitle[64] = "";
 static volatile bool blankTrackPlaying = false; // latest title is BLANK_TRACK_TITLE
 // Approximate: starts when the title is received, not when the audio actually starts.
 static volatile uint32_t blankTrackStartMs = 0;
-static volatile bool blankDone = false;         // already blanked for this play of the track
-static uint32_t quietSampleRun = 0;              // audio callback only
+static volatile bool blankDone = false; // already blanked for this play of the track
+static int16_t maxSample = 0, minSample = 0;
+static uint32_t quietSampleRun = 0;
 
 static void resetBlankState() {
   blankTrackPlaying = false;
@@ -85,30 +86,42 @@ static void onMetadata(uint8_t attributeId, const uint8_t* text) {
   blankTrackStartMs = millis();
   blankTrackPlaying = strcmp(lastTitle, BLANK_TRACK_TITLE) == 0 ||
                      strcmp(lastTitle, BLANK_TRACK_TITLE_2) == 0;
+  if (blankTrackPlaying) {
+    maxSample = 0;
+    minSample = 0;
+  }
 }
 
 static void audioDataCallback(const uint8_t* data, uint32_t length) {
   writeBtSamples(data, length);
 
-  // Count consecutive silent samples across callbacks. A sample here is one stereo frame (the data
-  // is interleaved L/R int16, 4 bytes per frame)
-  const int16_t* samples = reinterpret_cast<const int16_t*>(data);
-  const uint32_t frameCount = length / 4;
-  for (uint32_t i = 0; i < frameCount; ++i) {
-    if (labs(samples[i * 2]) < QUIET_SAMPLE_CUTOFF && labs(samples[i * 2 + 1]) < QUIET_SAMPLE_CUTOFF) {
-      ++quietSampleRun;
-    } else {
-      quietSampleRun = 0;
-    }
-  }
-
   if (
     bluetoothActive && blankTrackPlaying && !blankDone &&
-    millis() - blankTrackStartMs >= BLANK_AFTER_MS &&
-    quietSampleRun >= BLANK_LOW_SAMPLE_COUNT
+    millis() - blankTrackStartMs >= BLANK_AFTER_MS
   ) {
+    // The phone volume affects the sample numbers, so we can't just use a
+    // static threshold. Instead, we'll start collecting max and min values and
+    // if the samples are < some % of the max and min, we'll treat that as
+    // quiet.
+    const int16_t* samples = reinterpret_cast<const int16_t*>(data);
+    const uint32_t frameCount = length / 4;
+    for (uint32_t i = 0; i < frameCount; ++i) {
+      maxSample = max(max(samples[i * 2], samples[i * 2 + 1]), maxSample);
+      minSample = min(min(samples[i * 2], samples[i * 2 + 1]), minSample);
+    }
+
+    const int32_t upper = maxSample * QUIET_SAMPLE_CUTOFF;
+    const int32_t lower = minSample * QUIET_SAMPLE_CUTOFF;
+    for (uint32_t i = 0; i < BLANK_LOW_SAMPLE_COUNT; ++i) {
+      if (samples[i * 2] > upper || samples[i * 2 + 1] > upper ||
+        samples[i * 2] < lower || samples[i * 2 + 1] < lower
+      ) {
+        return;
+      }
+    }
+
     blankDone = true;
-    Serial.println("Blanking LEDs");
+    Serial.println("Blanking");
     requestBlankLeds();
   }
 }

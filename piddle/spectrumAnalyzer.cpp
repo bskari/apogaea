@@ -64,10 +64,10 @@ static float windowingConstants[SAMPLE_COUNT / 2 + 1];
 static i2s_chan_handle_t rxHandle;
 
 volatile bool bluetoothActive = false;
-static volatile bool blankLedsRequested = false;
+static volatile uint32_t blankLedsRequestTimeMs = 0;
 
 void requestBlankLeds() {
-  blankLedsRequested = true;
+  blankLedsRequestTimeMs = millis();
 }
 
 extern CRGB leds[STRIP_COUNT][LEDS_PER_STRIP];
@@ -375,14 +375,6 @@ void displaySpectrumAnalyzer(
     static int voltageOnes = 4, voltageTenths = 7, voltageHundredths = 1;
   #endif
 
-  if (blankLedsRequested) {
-    blankLedsRequested = false;
-    fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
-    driver.showPixels(NO_WAIT);
-    // Skip this iteration's render so it can't redraw over the blank.
-    return;
-  }
-
   #if LOG_TIMING
     auto part_us = micros();
   #endif
@@ -464,10 +456,15 @@ void displaySpectrumAnalyzer(
   #endif
 
   // The boost is added before the power limiter below, so the power budget and diode cap still apply.
+  static int previousBrightness = 0;
   const int sliderBrightness = min(
     static_cast<int>(static_cast<float>(brightness_p) * 255.0f / 100.0f) + getBrightnessBoost(),
     255
   );
+  if (previousBrightness != sliderBrightness) {
+    Serial.printf("Brightness: %d\n", sliderBrightness);
+  }
+  previousBrightness = sliderBrightness;
 
   int diodeBrightness = 255;
   if (showConverterLeds) {
@@ -506,6 +503,12 @@ void displaySpectrumAnalyzer(
   #if LOG_TIMING
     part_us = micros();
   #endif
+
+  // We could do this at the top and return early, but do it here to keep timing accurate
+  if (millis() > blankLedsRequestTimeMs and millis() < blankLedsRequestTimeMs + 1000) {
+    fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
+  }
+
   driver.showPixels(NO_WAIT);
   #if LOG_TIMING
     const auto show_us = micros() - part_us;
