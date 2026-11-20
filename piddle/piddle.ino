@@ -44,6 +44,7 @@ struct Configuration_t {
   uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or GRB
   uint8_t showConverterLedsSwitch; // =1 if switch ON and =0 if OFF
+  uint8_t skipStrip; // 0 = show all strips, 1 to 15 = skip that 1-based strip
 };
 Configuration_t configuration;
 
@@ -125,6 +126,8 @@ void loadConfigFromPreferences(Configuration_t& config) {
   config.normalizeBandsSwitch = preferences.getUChar("nor", config.normalizeBandsSwitch);
   config.rgb = preferences.getUShort("rgb", config.rgb);
   config.showConverterLedsSwitch = preferences.getUChar("cnv", config.showConverterLedsSwitch);
+  config.skipStrip = preferences.getUChar("skp", config.skipStrip);
+  if (config.skipStrip > STRIP_COUNT) config.skipStrip = 0;
   preferences.end();
 }
 
@@ -157,6 +160,9 @@ void saveConfigFieldsToPreferences(const Configuration_t& config, uint16_t field
   }
   if (fields & (1 << static_cast<uint8_t>(BleConfigField::ShowConverterLeds))) {
     preferences.putUChar("cnv", config.showConverterLedsSwitch);
+  }
+  if (fields & (1 << static_cast<uint8_t>(BleConfigField::SkipStrip))) {
+    preferences.putUChar("skp", config.skipStrip);
   }
   preferences.end();
 }
@@ -264,6 +270,7 @@ void setup() {
   configuration.rgbButton = 0;
   configuration.rgb = 0;
   configuration.showConverterLedsSwitch = DEFAULT_SHOW_CONVERTER_LEDS;
+  configuration.skipStrip = 0;
 
   // Overlay whatever was last saved to NVS (if anything) on top of the hardcoded defaults above.
   loadConfigFromPreferences(configuration);
@@ -388,6 +395,7 @@ void loop() {
         configuration.rgbButton = bleMsg.rgbButton;
         configuration.rgb = bleMsg.rgb;
         configuration.showConverterLedsSwitch = bleMsg.showConverterLeds;
+        configuration.skipStrip = bleMsg.skipStrip;
         portEXIT_CRITICAL(&configMux);
 
         pendingSaveFields |= changedFields;
@@ -502,7 +510,8 @@ void displayLedsFunction(void*) {
           configuration.sensitivitySlider,
           configuration.speedSlider,
           configuration.rgb,
-          configuration.showConverterLedsSwitch);
+          configuration.showConverterLedsSwitch,
+          configuration.skipStrip);
       }
 
       #ifdef LOG_DEBUG

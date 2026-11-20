@@ -3,7 +3,7 @@
 
 #include <stdint.h>
 
-void displaySpectrumAnalyzer(uint8_t brightness_p, uint8_t palette, bool normalizeBands, uint8_t sensitivity_p, uint8_t speed_p, uint16_t rgb, bool showConverterLeds);
+void displaySpectrumAnalyzer(uint8_t brightness_p, uint8_t palette, bool normalizeBands, uint8_t sensitivity_p, uint8_t speed_p, uint16_t rgb, bool showConverterLeds, uint8_t skipStrip);
 void setupSpectrumAnalyzer();
 void collectSamples();
 

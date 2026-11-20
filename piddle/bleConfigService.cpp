@@ -25,7 +25,7 @@ portMUX_TYPE bleConfigMux = portMUX_INITIALIZER_UNLOCKED;
 // Holds the merged, last-known-good value of every attribute. Single-field writes update this in
 // place rather than replacing it wholesale, so fields the client hasn't sent yet keep their value.
 // Defaults mirror the control page's initial slider/switch state.
-BleConfigMessage_t currentConfig = {25, 25, 60, 0, 1, 0, 0, 0};
+BleConfigMessage_t currentConfig = {25, 25, 60, 0, 1, 0, 0, 0, 0};
 volatile bool messagePending = false;
 volatile bool clientConnected = false;
 // Bitmask (1 << BleConfigField) of every field applied since the last poll.
@@ -78,6 +78,10 @@ bool applyFieldUpdate(uint8_t field, uint16_t value, BleConfigMessage_t& config)
     case BleConfigField::ShowConverterLeds:
       if (value > 1) return false;
       config.showConverterLeds = static_cast<uint8_t>(value);
+      return true;
+    case BleConfigField::SkipStrip:
+      if (value > 15) return false;
+      config.skipStrip = static_cast<uint8_t>(value);
       return true;
     default:
       return false;

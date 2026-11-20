@@ -572,6 +572,16 @@
     <p class="strip-grid-caption">Highlight a strip if it's wired RGB instead of GRB, to swap its red/green channels back.</p>
   </fieldset>
 
+  <fieldset id="skipFieldset" disabled>
+    <legend>Skip strip</legend>
+    <div class="field">
+      <select id="skipStrip">
+        <option value="0">None (show all strips)</option>
+      </select>
+    </div>
+    <p class="strip-grid-caption">Leave one strip dark, e.g. if it isn't connected. The other strips are unaffected.</p>
+  </fieldset>
+
   <fieldset id="testFieldset" disabled>
     <legend>Test</legend>
     <button class="test-btn" id="testBtn" type="button">
@@ -597,7 +607,7 @@
   var STRIP_COUNT = 15;
   var STORAGE_KEY = "phonicBloomConfig";
   // Fields that make up a saved/restored configuration (excludes the momentary test toggle).
-  var CONFIG_KEYS = ["brightness", "sensitivity", "speed", "palette", "normalizeBands", "rgb", "showConverterLeds"];
+  var CONFIG_KEYS = ["brightness", "sensitivity", "speed", "palette", "normalizeBands", "rgb", "showConverterLeds", "skipStrip"];
 
   // Must stay in sync with BleConfigField in bleConfigService.hpp.
   var FIELD = {
@@ -608,7 +618,8 @@
     normalizeBands: 4,
     rgbButton: 5,
     rgb: 6,
-    showConverterLeds: 7
+    showConverterLeds: 7,
+    skipStrip: 8
   };
 
   var state = {
@@ -619,7 +630,8 @@
     normalizeBands: 1,
     rgbButton: 0,
     rgb: 0,
-    showConverterLeds: 0
+    showConverterLeds: 0,
+    skipStrip: 0
   };
 
   var device = null;
@@ -640,6 +652,7 @@
     document.getElementById("controls"),
     document.getElementById("switches"),
     document.getElementById("stripFieldset"),
+    document.getElementById("skipFieldset"),
     document.getElementById("testFieldset")
   ];
 
@@ -685,6 +698,18 @@
     }
   }
   buildStripGrid();
+
+  var skipSelect = document.getElementById("skipStrip");
+  for (var s = 1; s <= STRIP_COUNT; s++) {
+    var opt = document.createElement("option");
+    opt.value = String(s);
+    opt.textContent = "Strip " + s;
+    skipSelect.appendChild(opt);
+  }
+  skipSelect.addEventListener("change", function () {
+    state.skipStrip = Number(skipSelect.value);
+    scheduleWrite("skipStrip");
+  });
 
   function updateSliderFill(input) {
     var min = Number(input.min || 0);

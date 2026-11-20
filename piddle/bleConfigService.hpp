@@ -12,6 +12,7 @@ enum class BleConfigField : uint8_t {
   RgbButton = 5,
   Rgb = 6,
   ShowConverterLeds = 7,
+  SkipStrip = 8,
 };
 
 struct BleConfigMessage_t {
@@ -23,6 +24,7 @@ struct BleConfigMessage_t {
   uint8_t rgbButton; // =1 if button pressed, else =0, from 0 to 1
   uint16_t rgb; // bitwise flag for the 15 LED strips that determines if that strip is RGB or not
   uint8_t showConverterLeds; // =1 if switch ON and =0 if OFF, from 0 to 1
+  uint8_t skipStrip; // 0 = show all strips, 1 to 15 = skip (leave dark) that 1-based strip
 };
 
 void setupBleConfigService();

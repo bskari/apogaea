@@ -82,7 +82,7 @@ static CRGB savedFirstLeds[STRIP_COUNT];
 static unsigned char brightness = 64;
 
 static void computeFft();
-static void renderFft(uint8_t palette, bool normalizeBands, const uint16_t rgb);
+static void renderFft(uint8_t palette, bool normalizeBands, const uint16_t rgb, const uint8_t skipStrip);
 static void slideDown(int count);
 
 // Keep in sync with Palette in sim/renderer.h and the palette dropdown in phonic-bloom-control.html.
@@ -161,7 +161,7 @@ static void computeFft() {
 #endif
 }
 
-static void renderFft(const uint8_t palette, const bool normalizeBands, const uint16_t rgb) {
+static void renderFft(const uint8_t palette, const bool normalizeBands, const uint16_t rgb, const uint8_t skipStrip) {
   const int startNote = c4Index - 4;
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
@@ -232,6 +232,10 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
     }
   }
 
+  // skipStrip is 1-based (0 = none). The skipped strip still consumes its notes and hue steps so
+  // every other strip looks exactly as it would with all strips connected; it is just left dark.
+  const int skippedStrip = static_cast<int>(skipStrip) - 1;
+
   uint16_t hue16 = hueStart * 256;
   for (int note = startNote; note < COUNT_OF(noteValues) - 1; /* Increment done in loop */) {
     {
@@ -250,8 +254,10 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
         color.r = color.g;
         color.g = tmp;
       }
-      for (int i = 0; i < SLIDE_COUNT; ++i) {
-        leds[strip][i] += color;
+      if (strip != skippedStrip) {
+        for (int i = 0; i < SLIDE_COUNT; ++i) {
+          leds[strip][i] += color;
+        }
       }
     }
     ++note;
@@ -266,7 +272,7 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
       const uint8_t gammaCorrected = intValue * intValue / 255;
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
-      for (int i = 0; i < SLIDE_COUNT; ++i) {
+      for (int i = 0; i < SLIDE_COUNT && strip != skippedStrip; ++i) {
         leds[strip][LEDS_PER_STRIP - 1 - i] += paletteColor(palette, hue, gammaCorrected);
         if ((rgb >> strip) & 1) {
           const uint8_t tmp = leds[strip][LEDS_PER_STRIP - 1 - i].r;
@@ -361,7 +367,8 @@ void displaySpectrumAnalyzer(
   const uint8_t sensitivity_p,
   const uint8_t speed_p,
   const uint16_t rgb,
-  const bool showConverterLeds
+  const bool showConverterLeds,
+  const uint8_t skipStrip
 ) {
   #if LOG_TIMING
     const decltype(millis()) logTime_ms = 5000;
@@ -447,7 +454,7 @@ void displaySpectrumAnalyzer(
     part_us = micros();
   #endif
 
-  renderFft(palette, normalizeBands, rgb);
+  renderFft(palette, normalizeBands, rgb, skipStrip);
   #if LOG_TIMING
     const auto render_us = micros() - part_us;
   #endif
