@@ -181,7 +181,7 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
     if (logDebug) {
       logOutputNotes();
       logNotes(noteValues);
-      const auto unscaledMw = calculate_unscaled_power_mW(reinterpret_cast<CRGB*>(leds), LEDS_PER_STRIP * STRIP_COUNT, false);
+      const auto unscaledMw = calculate_unscaled_power_mW(reinterpret_cast<CRGB*>(leds), LEDS_PER_STRIP * STRIP_COUNT);
       Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) if at max brightness\n", unscaledMw, unscaledMw / 5, unscaledMw / 12);
       logDebug = false;
     }
