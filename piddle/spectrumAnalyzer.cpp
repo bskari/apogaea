@@ -181,11 +181,8 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
     if (logDebug) {
       logOutputNotes();
       logNotes(noteValues);
-      const auto unscaledMw = calculate_unscaled_power_mW(reinterpret_cast<CRGB*>(leds), LEDS_PER_STRIP * STRIP_COUNT);
+      const auto unscaledMw = calculate_unscaled_power_mW(reinterpret_cast<CRGB*>(leds), LEDS_PER_STRIP * STRIP_COUNT, false);
       Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) if at max brightness\n", unscaledMw, unscaledMw / 5, unscaledMw / 12);
-      const auto scaledMw = unscaledMw * brightness / 255;
-      const int brightness_p = brightness * 100 / 255;
-      Serial.printf("%ld mW (%ldmA@5V,%ldmA@12V) at %d%% brightness\n", scaledMw, scaledMw / 5, scaledMw / 12, brightness_p);
       logDebug = false;
     }
   #endif
@@ -456,15 +453,10 @@ void displaySpectrumAnalyzer(
   #endif
 
   // The boost is added before the power limiter below, so the power budget and diode cap still apply.
-  static int previousBrightness = 0;
   const int sliderBrightness = min(
     static_cast<int>(static_cast<float>(brightness_p) * 255.0f / 100.0f) + getBrightnessBoost(),
     255
   );
-  if (previousBrightness != sliderBrightness) {
-    Serial.printf("Brightness: %d\n", sliderBrightness);
-  }
-  previousBrightness = sliderBrightness;
 
   int diodeBrightness = 255;
   if (showConverterLeds) {
