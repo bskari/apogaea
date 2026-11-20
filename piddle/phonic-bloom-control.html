@@ -586,7 +586,7 @@
     <legend>Test</legend>
     <button class="test-btn" id="testBtn" type="button">
       <span id="testBtnLabel">Light test LEDs</span>
-      <span class="test-btn-caption" id="testBtnCaption">Fills every strip red until toggled off</span>
+      <span class="test-btn-caption" id="testBtnCaption">Fills every strip red until toggled off (skipped strip shows blue)</span>
     </button>
   </fieldset>
 
@@ -755,7 +755,7 @@
     state.rgbButton = active ? 1 : 0;
     testBtn.dataset.active = active ? "true" : "false";
     testBtnLabel.textContent = active ? "Stop test LEDs" : "Light test LEDs";
-    testBtnCaption.textContent = active ? "Every strip is lit red" : "Fills every strip red until toggled off";
+    testBtnCaption.textContent = active ? "Every strip is lit red (skipped strip blue)" : "Fills every strip red until toggled off (skipped strip shows blue)";
     scheduleWrite("rgbButton");
   }
   testBtn.addEventListener("click", function () {

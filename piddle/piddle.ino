@@ -497,7 +497,9 @@ void displayLedsFunction(void*) {
       if (configuration.rgbButton) {
         fill_solid(reinterpret_cast<CRGB*>(leds), STRIP_COUNT * LEDS_PER_STRIP, CRGB::Black);
         for (int i = 0; i < STRIP_COUNT; ++i) {
-          leds[i][1] = leds[i][2] = leds[i][3] = CRGB::Red;
+          // The skipped strip (1-based, 0 = none) shows blue instead of red.
+          const bool skipped = configuration.skipStrip == i + 1;
+          leds[i][1] = leds[i][2] = leds[i][3] = skipped ? CRGB::Blue : CRGB::Red;
         }
         swapChannels(configuration.rgb);
         driver.showPixels(WAIT);
