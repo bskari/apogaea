@@ -232,9 +232,11 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
     }
   }
 
-  // skipStrip is 1-based (0 = none). The skipped strip still consumes its notes and hue steps so
-  // every other strip looks exactly as it would with all strips connected; it is just left dark.
+  // skipStrip is 1-based (0 = none)
   const int skippedStrip = static_cast<int>(skipStrip) - 1;
+  if (strip == skippedStrip) {
+    ++strip;
+  }
 
   uint16_t hue16 = hueStart * 256;
   for (int note = startNote; note < COUNT_OF(noteValues) - 1; /* Increment done in loop */) {
@@ -254,16 +256,15 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
         color.r = color.g;
         color.g = tmp;
       }
-      if (strip != skippedStrip) {
-        for (int i = 0; i < SLIDE_COUNT; ++i) {
-          leds[strip][i] += color;
-        }
+      for (int i = 0; i < SLIDE_COUNT; ++i) {
+        leds[strip][i] += color;
       }
     }
     ++note;
 
     #if DOUBLE_ENDED
     {
+#warning "double ended"
       const float floatValue = noteValues[note];
       // Multiply by 254 instead of 255 so I don't need to worry about wraparound. Should be 0 <=
       // floatValue <= 1, but just in case.
@@ -272,25 +273,34 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
       const uint8_t gammaCorrected = intValue * intValue / 255;
       const uint8_t hue = (hue16 >> 8);
       hue16 += hue16Step;
-      for (int i = 0; i < SLIDE_COUNT && strip != skippedStrip; ++i) {
-        leds[strip][LEDS_PER_STRIP - 1 - i] += paletteColor(palette, hue, gammaCorrected);
-        if ((rgb >> strip) & 1) {
-          const uint8_t tmp = leds[strip][LEDS_PER_STRIP - 1 - i].r;
-          leds[strip][LEDS_PER_STRIP - 1 - i].r = leds[strip][LEDS_PER_STRIP - 1 - i].g;
-          leds[strip][LEDS_PER_STRIP - 1 - i].g = tmp;
-        }
+
+      CRGB color = paletteColor(palette, hue, gammaCorrected);
+      if ((rgb >> strip) & 1) {
+        const uint8_t tmp = color.r;
+        color.r = color.g;
+        color.g = tmp;
+      }
+      for (int i = 0; i < SLIDE_COUNT; ++i) {
+        leds[strip][LEDS_PER_STRIP - BLANK_LEDS_AT_END - 1 - i] += paletteColor(palette, hue, gammaCorrected);
       }
     }
     ++note;
     #endif
 
+    // Go to next strip
     ++strip;
+    //if (strip == skippedStrip) {
+    //  ++strip;
+    //}
     if (strip >= STRIP_COUNT) {
       strip = 0;
       constexpr uint16_t step = 65536 / 3 - hue16Step * STRIP_COUNT * 2;
       static_assert(step > 0);
       hue16 += step;
     }
+    //if (strip == skippedStrip) {
+    //  ++strip;
+    //}
   }
 
   for (int i = 0; i < STRIP_COUNT; ++i) {
@@ -306,7 +316,7 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
 
   // Shut off the ends of the strips
   for (int i = 0; i < STRIP_COUNT; ++i) {
-    for (int j = LEDS_PER_STRIP - 35; j < LEDS_PER_STRIP; ++j) {
+    for (int j = LEDS_PER_STRIP - BLANK_LEDS_AT_END; j < LEDS_PER_STRIP; ++j) {
       leds[i][j] = CRGB::Black;
     }
   }
@@ -557,10 +567,22 @@ void displaySpectrumAnalyzer(
 }
 
 static void slideDown(const int count) {
+#if DOUBLE_ENDED
+  const int half = (LEDS_PER_STRIP - BLANK_LEDS_AT_END) / 2;
+  const int byteCount = (half - count) * sizeof(leds[0][0]);
+  for (int i = 0; i < STRIP_COUNT; ++i) {
+    ::memmove(&leds[i][count], &leds[i][0], byteCount);
+    // I don't think I can do memmove for the reverse direction, so do it manually
+    for (int j = 0; j < half; ++j) {
+      leds[i][half + j] = leds[i][half + j + 1];
+    }
+  }
+#else
   const int byteCount = (LEDS_PER_STRIP - count) * sizeof(leds[0][0]);
   for (int i = 0; i < STRIP_COUNT; ++i) {
     ::memmove(&leds[i][count], &leds[i][0], byteCount);
   }
+#endif
 }
 
 void setupSpectrumAnalyzer() {

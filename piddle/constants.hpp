@@ -12,7 +12,9 @@
 #  define ENABLE_ARTNET 0
 #endif
 
+#define DOUBLE_ENDED 1
 const int LEDS_PER_STRIP = 151;
+const int BLANK_LEDS_AT_END = 35;
 
 const int VOLTAGE_PIN = 36;
 const int INFRARED_PIN = 15;
