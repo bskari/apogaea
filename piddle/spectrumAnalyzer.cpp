@@ -163,7 +163,7 @@ static void computeFft() {
 
 static void renderFft(const uint8_t palette, const bool normalizeBands, const uint16_t rgb, const uint8_t skipStrip) {
   const int startNote = c4Index - 8;
-  static_asssert(startNote >= 0);
+  static_assert(startNote >= 0);
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
   // on the outside edge, going up, and the other notes to trickle down from the center.
@@ -293,18 +293,18 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
 
     // Go to next strip
     ++strip;
-    //if (strip == skippedStrip) {
-    //  ++strip;
-    //}
+    if (strip == skippedStrip) {
+      ++strip;
+    }
     if (strip >= STRIP_COUNT) {
       strip = 0;
       constexpr uint16_t step = 65536 / 3 - hue16Step * STRIP_COUNT * 2;
       static_assert(step > 0);
       hue16 += step;
     }
-    //if (strip == skippedStrip) {
-    //  ++strip;
-    //}
+    if (strip == skippedStrip) {
+      ++strip;
+    }
   }
 
   for (int i = 0; i < STRIP_COUNT; ++i) {
