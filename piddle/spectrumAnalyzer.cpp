@@ -162,7 +162,8 @@ static void computeFft() {
 }
 
 static void renderFft(const uint8_t palette, const bool normalizeBands, const uint16_t rgb, const uint8_t skipStrip) {
-  const int startNote = c4Index - 4;
+  const int startNote = c4Index - 8;
+  static_asssert(startNote >= 0);
 
   // Okay. So there are 5 strands that I'm going to loop down and back up. I want the bassline to be
   // on the outside edge, going up, and the other notes to trickle down from the center.
@@ -195,7 +196,11 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
   }
 
   static uint8_t rainbowOffset = 0;
-  constexpr uint16_t hue16Step = 256 * 3;
+  #if DOUBLE_ENDED
+    constexpr uint16_t hue16Step = 256 * 3 / 2;
+  #else
+    constexpr uint16_t hue16Step = 256 * 3;
+  #endif
   // Vary the start hue by a small sine wave
   const int quadWaveMillisDiv = 64;
   const int quadWaveDiv = 8;
@@ -264,7 +269,6 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
 
     #if DOUBLE_ENDED
     {
-#warning "double ended"
       const float floatValue = noteValues[note];
       // Multiply by 254 instead of 255 so I don't need to worry about wraparound. Should be 0 <=
       // floatValue <= 1, but just in case.
