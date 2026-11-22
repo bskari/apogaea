@@ -507,13 +507,14 @@ void displayLedsFunction(void*) {
 #ifdef ARTNET_IMAGE
     if (artNetMode && artNetActive) {
       // ArtNet receiver writes directly into leds (artNetPixels points at leds)
-      const bool syncMode = artNetSyncActive();
-      if (syncMode && !artNetTakeSync()) {
-        vTaskDelay(1 / portTICK_PERIOD_MS);
-        continue;
-      }
       while (xSemaphoreTake(artNetPixelsMutex, 0) == pdFALSE) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
+      }
+      // Wait until a whole frame (all universes) has arrived, so strips don't tear.
+      if (!artNetFrameReadyLocked()) {
+        xSemaphoreGive(artNetPixelsMutex);
+        vTaskDelay(1 / portTICK_PERIOD_MS);
+        continue;
       }
       swapChannels(configuration.rgb);
       if (!configuration.showConverterLedsSwitch) {
@@ -524,9 +525,6 @@ void displayLedsFunction(void*) {
       driver.showPixels();
       swapChannels(configuration.rgb);
       xSemaphoreGive(artNetPixelsMutex);
-      if (!syncMode) {
-        delay(25); // ~40 fps
-      }
       continue;
     }
 #endif

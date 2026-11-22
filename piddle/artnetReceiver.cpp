@@ -4,22 +4,23 @@
 
 #include <string.h>
 #include <WiFi.h>
-#include <WiFiUdp.h>
+#include <AsyncUDP.h>
 
 #define ARTNET_PORT           6454
 #define ARTNET_TIMEOUT_MS     2 * 60 * 1000
-#define ARTNET_SYNC_TIMEOUT_MS 1000
+#define ARTNET_FRAME_TIMEOUT_MS 30 // Draw a partial frame if the rest hasn't arrived by then
 #define ARTNET_UNIVERSE_OFFSET   0   // Strip 0 = universe 0
 
 CRGB* artNetPixels = nullptr;
 SemaphoreHandle_t artNetPixelsMutex = nullptr;
 
-static WiFiUDP udp;
+// AsyncUDP rather than WiFiUDP: a sender emits all universes of a frame back to back, and the
+// socket-based WiFiUDP only buffers a handful of packets, so the later universes were being dropped.
+static AsyncUDP udp;
 static volatile uint32_t lastPacketMs = 0;
-// ArtSync: once a sender has sent a sync packet within the last ARTNET_SYNC_TIMEOUT_MS, the
-// display only draws when a sync arrives. Otherwise it free-runs as before.
-static volatile uint32_t lastSyncMs = 0;
-static volatile bool syncPending = false;
+// Universes (bit N = strip N) received since the last frame was drawn. Guarded by artNetPixelsMutex.
+static uint32_t receivedMask = 0;
+static uint32_t firstPacketMs = 0; // When the first universe of the pending frame arrived.
 static TaskHandle_t collectSamplesTaskHandle = nullptr;
 static volatile bool* artNetModePtr = nullptr;
 
@@ -27,6 +28,7 @@ static volatile bool* artNetModePtr = nullptr;
 // Forward declarations
 // ---------------------------------------------------------------------------
 static void handleArtDmx(const uint8_t* buf, int len);
+static void onArtNetPacket(AsyncUDPPacket& packet);
 static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
                              uint8_t startUniverse, uint8_t numPorts);
 
@@ -44,7 +46,8 @@ void setupArtNet(TaskHandle_t collectSamplesTask, volatile bool* artNetMode) {
   Serial.printf("%lu.%lu: ArtNet: AP up, IP %s\n", millis() / 1000, millis() % 1000, WiFi.softAPIP().toString().c_str());
 
   artNetPixelsMutex = xSemaphoreCreateMutex();
-  udp.begin(ARTNET_PORT);
+  udp.onPacket(onArtNetPacket);
+  udp.listen(ARTNET_PORT);
   Serial.printf("%lu.%lu: ArtNet: listening on UDP port %d\n", millis() / 1000, millis() % 1000, ARTNET_PORT);
 
   xTaskCreatePinnedToCore(
@@ -57,13 +60,13 @@ void setupArtNet(TaskHandle_t collectSamplesTask, volatile bool* artNetMode) {
     1);      // Core 1, opposite of display task
 }
 
-bool artNetSyncActive() {
-  return lastSyncMs != 0 && millis() - lastSyncMs < ARTNET_SYNC_TIMEOUT_MS;
-}
-
-bool artNetTakeSync() {
-  if (!syncPending) return false;
-  syncPending = false;
+bool artNetFrameReadyLocked() {
+  if (receivedMask == 0) return false;
+  const uint32_t allStrips = (1UL << STRIP_COUNT) - 1;
+  if (receivedMask != allStrips && millis() - firstPacketMs < ARTNET_FRAME_TIMEOUT_MS) {
+    return false;
+  }
+  receivedMask = 0;
   return true;
 }
 
@@ -71,57 +74,51 @@ bool artNetTakeSync() {
 // Receiver task
 // ---------------------------------------------------------------------------
 
+// Runs on AsyncUDP's task for every packet received.
+static void onArtNetPacket(AsyncUDPPacket& packet) {
+  const uint8_t* buf = packet.data();
+  const int readLen = packet.length();
+
+  // Validate Art-Net ID header
+  if (readLen < 10 || memcmp(buf, "Art-Net\0", 8) != 0) {
+    Serial.printf("%lu: Received non-ArtNet packet\n", millis());
+    return;
+  }
+
+  uint16_t opcode = (uint16_t)buf[8] | ((uint16_t)buf[9] << 8);
+
+  if (opcode == 0x5000 && readLen >= 18) {
+    // ArtDMX
+    handleArtDmx(buf, readLen);
+    lastPacketMs = millis();
+    if (!artNetActive) {
+      artNetActive = true;
+      vTaskSuspend(collectSamplesTaskHandle);
+      Serial.println("ArtNet: receiving");
+    }
+  } else if (opcode == 0x2000) {
+    // ArtPoll - reply once per group of 4 universes using BindIndex
+    IPAddress src = packet.remoteIP();
+    Serial.printf("%lu.%lu: ArtNet: replying to ArtPoll from %s (%lu)\n", millis() / 1000, millis() % 1000, src.toString().c_str(), static_cast<uint32_t>(src));
+    sendArtPollReply(src, 1,  0, 4);
+    sendArtPollReply(src, 2,  4, 4);
+    sendArtPollReply(src, 3,  8, 4);
+    sendArtPollReply(src, 4, 12, 3);
+  }
+}
+
+// Falls back to audio when the signal is lost. Packets themselves are handled by onArtNetPacket.
 void artNetReceiverFunction(void*) {
-  static uint8_t buf[530]; // Largest valid ArtNet packet is 18 + 512 = 530 bytes
-
   while (1) {
-    int pktLen = udp.parsePacket();
-
-    if (pktLen <= 0) {
-      if (artNetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
-        Serial.printf("%lu.%lu: ArtNet: signal lost, resuming audio\n", millis() / 1000, millis() % 1000);
-        artNetActive = false;
-        vTaskResume(collectSamplesTaskHandle);
-        *artNetModePtr = false;
-        vTaskDelete(NULL);
-      }
-      vTaskDelay(1 / portTICK_PERIOD_MS);
-      continue;
+    if (artNetActive && millis() - lastPacketMs > ARTNET_TIMEOUT_MS) {
+      Serial.printf("%lu.%lu: ArtNet: signal lost, resuming audio\n", millis() / 1000, millis() % 1000);
+      udp.close(); // Stop packets re-activating ArtNet now that this task is going away
+      artNetActive = false;
+      vTaskResume(collectSamplesTaskHandle);
+      *artNetModePtr = false;
+      vTaskDelete(NULL);
     }
-
-    int readLen = udp.read(buf, sizeof(buf));
-
-    // Validate Art-Net ID header
-    if (readLen < 10 || memcmp(buf, "Art-Net\0", 8) != 0) {
-      Serial.printf("%lu: Received non-ArtNet packet\n", millis());
-      continue;
-    }
-
-    uint16_t opcode = (uint16_t)buf[8] | ((uint16_t)buf[9] << 8);
-
-    if (opcode == 0x5000 && readLen >= 18) {
-      // ArtDMX
-      handleArtDmx(buf, readLen);
-      lastPacketMs = millis();
-      if (!artNetActive) {
-        artNetActive = true;
-        vTaskSuspend(collectSamplesTaskHandle);
-        Serial.println("ArtNet: receiving");
-      }
-    } else if (opcode == 0x5200 && readLen >= 14) {
-      // ArtSync: the sender says the current frame is complete across all universes.
-      lastSyncMs = millis();
-      lastPacketMs = lastSyncMs;
-      syncPending = true;
-    } else if (opcode == 0x2000) {
-      // ArtPoll - reply once per group of 4 universes using BindIndex
-      IPAddress src = udp.remoteIP();
-      Serial.printf("%lu.%lu: ArtNet: replying to ArtPoll from %s (%lu)\n", millis() / 1000, millis() % 1000, src.toString().c_str(), static_cast<uint32_t>(src));
-      sendArtPollReply(src, 1,  0, 4);
-      sendArtPollReply(src, 2,  4, 4);
-      sendArtPollReply(src, 3,  8, 4);
-      sendArtPollReply(src, 4, 12, 3);
-    }
+    vTaskDelay(100 / portTICK_PERIOD_MS);
   }
 }
 
@@ -151,6 +148,10 @@ static void handleArtDmx(const uint8_t* buf, int len) {
   const int pixels = min((int)(dmxLen / 3), activeLeds);
 
   xSemaphoreTake(artNetPixelsMutex, portMAX_DELAY);
+  if (receivedMask == 0) {
+    firstPacketMs = millis();
+  }
+  receivedMask |= 1UL << strip;
   for (int i = 0; i < pixels; i++) {
     artNetPixels[strip * LEDS_PER_STRIP + i].r = dmx[i * 3 + 0];
     artNetPixels[strip * LEDS_PER_STRIP + i].g = dmx[i * 3 + 1];
@@ -215,8 +216,6 @@ static void sendArtPollReply(const IPAddress& dest, uint8_t bindIndex,
 
   reply[212] = 0x08;                            // Status2: supports 15-bit universe addressing
 
-  udp.beginPacket(dest, ARTNET_PORT);
-  udp.write(reply, sizeof(reply));
-  udp.endPacket();
+  udp.writeTo(reply, sizeof(reply), dest, ARTNET_PORT);
 }
 #endif // ARTNET_IMAGE

@@ -23,9 +23,7 @@ extern CRGB* artNetPixels;
 // Mutex that must be held while reading or writing artNetPixels.
 extern SemaphoreHandle_t artNetPixelsMutex;
 
-// True while the sender is emitting ArtSync packets. The display should then draw only when
-// artNetTakeSync() returns true, so a frame spanning several universes appears all at once.
-bool artNetSyncActive();
-
-// Returns true once per ArtSync received since the last call.
-bool artNetTakeSync();
+// Call with artNetPixelsMutex held. Returns true when a frame should be drawn: every universe has
+// arrived since the last draw, or a partial frame has waited long enough. Resets the tracking, so
+// it returns true once per frame.
+bool artNetFrameReadyLocked();
