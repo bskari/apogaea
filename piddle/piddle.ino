@@ -171,6 +171,20 @@ void saveConfigFieldsToPreferences(const Configuration_t& config, uint16_t field
 // circuits (DTR/RTS) pulse GPIO0 for only a few ms to tens of ms when a monitor connects.
 static constexpr uint32_t MIN_BUTTON_HOLD_MS = 200;
 
+// Advances to the next mode (Bluetooth audio -> BLE config -> ArtNet -> ...). Shared by the button
+// interrupt and the "mode" serial command; loop() acts on the flags.
+static inline void IRAM_ATTR requestModeSwitch() {
+#ifdef ARTNET_IMAGE
+  imageSwitchRequested = true;
+#else
+  if (bleConfigActive) {
+    imageSwitchRequested = true;
+  } else {
+    bleConfigRequested = true;
+  }
+#endif
+}
+
 void IRAM_ATTR buttonInterrupt() {
   // 0 means "no valid press in progress". (millis() can legitimately be 0 only at the very start of
   // boot, which the guard below ignores anyway.)
@@ -196,15 +210,7 @@ void IRAM_ATTR buttonInterrupt() {
       return; // glitch / debounce
     }
 
-#ifdef ARTNET_IMAGE
-    imageSwitchRequested = true;
-#else
-    if (bleConfigActive) {
-      imageSwitchRequested = true;
-    } else {
-      bleConfigRequested = true;
-    }
-#endif
+    requestModeSwitch();
   }
 }
 
@@ -347,7 +353,33 @@ void setup() {
   Serial.println("Done with setup");
 }
 
+// Reads a line from Serial. "mode" switches modes, like pressing the button. With LOG_DEBUG, any
+// other input triggers a debug dump.
+static void handleSerialCommands() {
+  static char line[16];
+  static size_t len = 0;
+  while (Serial.available() > 0) {
+    const char c = Serial.read();
+    if (c == '\n' || c == '\r') {
+      line[len] = '\0';
+      if (strcmp(line, "mode") == 0) {
+        Serial.println("Serial command: switching mode");
+        requestModeSwitch();
+      }
+#ifdef LOG_DEBUG
+      else if (len > 0) {
+        logDebug = true;
+      }
+#endif
+      len = 0;
+    } else if (len < sizeof(line) - 1) {
+      line[len++] = c;
+    }
+  }
+}
+
 void loop() {
+  handleSerialCommands();
 #ifndef ARTNET_IMAGE
   if (bleConfigRequested) {
     bleConfigRequested = false;
@@ -475,6 +507,11 @@ void displayLedsFunction(void*) {
 #ifdef ARTNET_IMAGE
     if (artNetMode && artNetActive) {
       // ArtNet receiver writes directly into leds (artNetPixels points at leds)
+      const bool syncMode = artNetSyncActive();
+      if (syncMode && !artNetTakeSync()) {
+        vTaskDelay(1 / portTICK_PERIOD_MS);
+        continue;
+      }
       while (xSemaphoreTake(artNetPixelsMutex, 0) == pdFALSE) {
         vTaskDelay(1 / portTICK_PERIOD_MS);
       }
@@ -487,7 +524,9 @@ void displayLedsFunction(void*) {
       driver.showPixels();
       swapChannels(configuration.rgb);
       xSemaphoreGive(artNetPixelsMutex);
-      delay(25); // ~40 fps
+      if (!syncMode) {
+        delay(25); // ~40 fps
+      }
       continue;
     }
 #endif
@@ -516,14 +555,6 @@ void displayLedsFunction(void*) {
           configuration.skipStrip);
       }
 
-      #ifdef LOG_DEBUG
-        if (Serial.available() > 0) {
-          logDebug = true;
-          while (Serial.available() > 0) {
-            Serial.read();
-          }
-        }
-      #endif
     }
     // Keep the watchdog happy
     delay(1);

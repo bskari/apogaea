@@ -8,6 +8,7 @@
 
 #define ARTNET_PORT           6454
 #define ARTNET_TIMEOUT_MS     2 * 60 * 1000
+#define ARTNET_SYNC_TIMEOUT_MS 1000
 #define ARTNET_UNIVERSE_OFFSET   0   // Strip 0 = universe 0
 
 CRGB* artNetPixels = nullptr;
@@ -15,6 +16,10 @@ SemaphoreHandle_t artNetPixelsMutex = nullptr;
 
 static WiFiUDP udp;
 static volatile uint32_t lastPacketMs = 0;
+// ArtSync: once a sender has sent a sync packet within the last ARTNET_SYNC_TIMEOUT_MS, the
+// display only draws when a sync arrives. Otherwise it free-runs as before.
+static volatile uint32_t lastSyncMs = 0;
+static volatile bool syncPending = false;
 static TaskHandle_t collectSamplesTaskHandle = nullptr;
 static volatile bool* artNetModePtr = nullptr;
 
@@ -50,6 +55,16 @@ void setupArtNet(TaskHandle_t collectSamplesTask, volatile bool* artNetMode) {
     2,       // Priority - higher than display task (1) so packets are never dropped
     nullptr,
     1);      // Core 1, opposite of display task
+}
+
+bool artNetSyncActive() {
+  return lastSyncMs != 0 && millis() - lastSyncMs < ARTNET_SYNC_TIMEOUT_MS;
+}
+
+bool artNetTakeSync() {
+  if (!syncPending) return false;
+  syncPending = false;
+  return true;
 }
 
 // ---------------------------------------------------------------------------
@@ -93,6 +108,11 @@ void artNetReceiverFunction(void*) {
         vTaskSuspend(collectSamplesTaskHandle);
         Serial.println("ArtNet: receiving");
       }
+    } else if (opcode == 0x5200 && readLen >= 14) {
+      // ArtSync: the sender says the current frame is complete across all universes.
+      lastSyncMs = millis();
+      lastPacketMs = lastSyncMs;
+      syncPending = true;
     } else if (opcode == 0x2000) {
       // ArtPoll - reply once per group of 4 universes using BindIndex
       IPAddress src = udp.remoteIP();
@@ -127,13 +147,18 @@ static void handleArtDmx(const uint8_t* buf, int len) {
   if (len < 18 + (int)dmxLen) return;
 
   const uint8_t* dmx = buf + 18;
-  const int pixels = min((int)(dmxLen / 3), (int)LEDS_PER_STRIP);
+  const int activeLeds = LEDS_PER_STRIP - BLANK_LEDS_AT_END;
+  const int pixels = min((int)(dmxLen / 3), activeLeds);
 
   xSemaphoreTake(artNetPixelsMutex, portMAX_DELAY);
   for (int i = 0; i < pixels; i++) {
     artNetPixels[strip * LEDS_PER_STRIP + i].r = dmx[i * 3 + 0];
     artNetPixels[strip * LEDS_PER_STRIP + i].g = dmx[i * 3 + 1];
     artNetPixels[strip * LEDS_PER_STRIP + i].b = dmx[i * 3 + 2];
+  }
+  // The trailing blank LEDs are never driven by ArtNet data.
+  for (int i = activeLeds; i < LEDS_PER_STRIP; i++) {
+    artNetPixels[strip * LEDS_PER_STRIP + i] = CRGB::Black;
   }
   xSemaphoreGive(artNetPixelsMutex);
 }
