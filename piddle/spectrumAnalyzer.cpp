@@ -285,7 +285,7 @@ static void renderFft(const uint8_t palette, const bool normalizeBands, const ui
         color.g = tmp;
       }
       for (int i = 0; i < SLIDE_COUNT; ++i) {
-        leds[strip][LEDS_PER_STRIP - BLANK_LEDS_AT_END - 1 - i] += paletteColor(palette, hue, gammaCorrected);
+        leds[strip][LEDS_PER_STRIP - BLANK_LEDS_AT_END - 1 - i] += color;
       }
     }
     ++note;
