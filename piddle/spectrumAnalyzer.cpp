@@ -337,12 +337,13 @@ void collectSamples() {
   auto start_us = micros();
   auto diff_us = micros();
   while (1) {
-    const int oldOffset = rawSamplesOffset;
-    // Mark this section as unable to be used
-    rawSamplesOffset += MAX_I2S_BUFFER_LENGTH;
-    if (rawSamplesOffset >= COUNT_OF(rawSamples)) {
-      rawSamplesOffset = 0;
-    }
+    // writeBtSamples advances the offset one sample at a time, so after Bluetooth audio it can be
+    // anywhere. Round down so a full read always fits in rawSamples.
+    const int oldOffset = rawSamplesOffset / MAX_I2S_BUFFER_LENGTH * MAX_I2S_BUFFER_LENGTH;
+    // Mark this section as unable to be used. Store only the wrapped value: this task can be
+    // suspended at any point, and writeBtSamples must never see an out of range offset.
+    const int nextOffset = oldOffset + MAX_I2S_BUFFER_LENGTH;
+    rawSamplesOffset = nextOffset < static_cast<int>(COUNT_OF(rawSamples)) ? nextOffset : 0;
 
     diff_us = micros() - start_us;
     if (diff_us < usPerSample) {

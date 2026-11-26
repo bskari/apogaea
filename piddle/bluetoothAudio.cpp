@@ -3,6 +3,12 @@
 #include "constants.hpp"
 #include <Arduino.h>
 #include <BluetoothA2DPSink.h>
+// ESP32 Arduino 3.3+ gives the classic Bluetooth controller's memory to the heap at boot unless
+// something includes this header, and ESP32-A2DP 1.8.4 doesn't. Without it, the controller and the
+// heap share memory, which panics when an audio source connects. Older cores don't have the header.
+#if __has_include(<esp32-hal-alloc-bt-classic-mem.h>)
+#  include <esp32-hal-alloc-bt-classic-mem.h>
+#endif
 
 #include "bluetoothAudio.hpp"
 #include "spectrumAnalyzer.hpp"
