@@ -280,6 +280,7 @@ void setup() {
 
   // Overlay whatever was last saved to NVS (if anything) on top of the hardcoded defaults above.
   loadConfigFromPreferences(configuration);
+  logConfig();
 
   if (restoreRtcConfig) {
     // Restore whatever was configured right before this reboot (into or out of BLE config mode).
@@ -406,17 +407,7 @@ void loop() {
       if (pollBleConfigService(bleMsg, changedFields)) {
         bleConfigLastActivityMillis = millis();
         #ifdef LOG_DEBUG
-          Serial.printf(
-            "bri:%d sen:%d spd:%d pal:%d nor:%d rgbButton:%d rgb:%04x cnv:%d\n",
-            bleMsg.brightness,
-            bleMsg.sensitivity,
-            bleMsg.speed,
-            bleMsg.palette,
-            bleMsg.normalizeBands,
-            bleMsg.rgbButton,
-            bleMsg.rgb,
-            bleMsg.showConverterLeds
-          );
+          logConfig();
         #endif
         portENTER_CRITICAL(&configMux);
         configuration.brightnessSlider = bleMsg.brightness;
@@ -500,6 +491,20 @@ void swapChannels(uint16_t rgbBitFlag) {
       }
     }
   }
+}
+
+void logConfig(void) {
+  const char* const palettes[] = {"default", "rainbow", "pastel", "fire", "ocean", "sunset"};
+  Serial.printf(
+    "bri:%d sen:%d spd:%d pal:%s norm:%d rgb:%04x skip:%d\n",
+    configuration.brightnessSlider,
+    configuration.sensitivitySlider,
+    configuration.speedSlider,
+    configuration.palette < COUNT_OF(palettes) ? palettes[configuration.palette] : "unknown",
+    configuration.normalizeBandsSwitch,
+    configuration.rgb,
+    configuration.skipStrip
+  );
 }
 
 void displayLedsFunction(void*) {
