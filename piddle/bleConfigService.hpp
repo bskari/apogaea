@@ -27,7 +27,9 @@ struct BleConfigMessage_t {
   uint8_t skipStrip; // 0 = show all strips, 1 to 15 = skip (leave dark) that 1-based strip
 };
 
-void setupBleConfigService();
+// initialConfig is what the device is currently using. It's what reads of the characteristic return,
+// and the base that single-field writes are merged into.
+void setupBleConfigService(const BleConfigMessage_t& initialConfig);
 // changedFields is a bitmask (1 << BleConfigField) of every field applied since the previous poll,
 // so callers can persist only what actually changed instead of rewriting every field.
 bool pollBleConfigService(BleConfigMessage_t& out, uint16_t& changedFields);

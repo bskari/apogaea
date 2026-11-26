@@ -499,8 +499,12 @@
 
   <button class="connect-btn" id="connectBtn" type="button">Connect to Phonic Bloom</button>
 
+  <div class="unsupported" id="readFailed" role="status">
+    Couldn't read the device's settings (its firmware may not support this). You can still control it, but the settings shown here may not match what the device is using.
+  </div>
+
   <div class="config-actions">
-    <button class="config-btn" id="saveConfigBtn" type="button">Save config</button>
+    <button class="config-btn" id="saveConfigBtn" type="button" disabled>Save config</button>
     <button class="config-btn" id="loadConfigBtn" type="button" disabled>Load config</button>
   </div>
 
@@ -634,7 +638,14 @@
     skipStrip: 0
   };
 
+  // Layout of a characteristic read. Must stay in sync with BleConfigSnapshot_t in
+  // bleConfigService.cpp.
+  var SNAPSHOT_VERSION = 1;
+  var SNAPSHOT_LENGTH = 11;
+
   var device = null;
+  // Bumped on every connect attempt and disconnect, so late results from an old one are ignored.
+  var session = 0;
   var characteristic = null;
   var writeInFlight = false;
   // Field name -> latest value awaiting a write. Each flush sends one field at a time so the
@@ -646,6 +657,7 @@
   var statusText = document.getElementById("statusText");
   var connectBtn = document.getElementById("connectBtn");
   var unsupported = document.getElementById("unsupported");
+  var readFailed = document.getElementById("readFailed");
   var saveConfigBtn = document.getElementById("saveConfigBtn");
   var loadConfigBtn = document.getElementById("loadConfigBtn");
   var panels = [
@@ -670,6 +682,9 @@
   function setPanelsEnabled(enabled) {
     panels.forEach(function (p) { p.disabled = !enabled; });
     loadConfigBtn.disabled = !enabled;
+    // Save stays disabled until the page's state means something: either it was read from the
+    // device, or (if that failed) the user has since changed or loaded a setting.
+    if (!enabled) saveConfigBtn.disabled = true;
   }
 
   function buildStripGrid() {
@@ -751,15 +766,16 @@
   var testBtn = document.getElementById("testBtn");
   var testBtnLabel = document.getElementById("testBtnLabel");
   var testBtnCaption = document.getElementById("testBtnCaption");
-  function setTestActive(active) {
-    state.rgbButton = active ? 1 : 0;
+  function renderTestButton() {
+    var active = state.rgbButton === 1;
     testBtn.dataset.active = active ? "true" : "false";
     testBtnLabel.textContent = active ? "Stop test LEDs" : "Light test LEDs";
     testBtnCaption.textContent = active ? "Every strip is lit red (skipped strip blue)" : "Fills every strip red until toggled off (skipped strip shows blue)";
-    scheduleWrite("rgbButton");
   }
   testBtn.addEventListener("click", function () {
-    setTestActive(state.rgbButton === 0);
+    state.rgbButton = state.rgbButton === 0 ? 1 : 0;
+    renderTestButton();
+    scheduleWrite("rgbButton");
   });
 
   function applyStateToUi() {
@@ -776,7 +792,6 @@
       } else if (input && input.tagName === "SELECT") {
         input.value = String(state[key]);
       }
-      scheduleWrite(key);
     });
 
     var stripInputs = document.querySelectorAll("#stripGrid input[type=checkbox]");
@@ -784,7 +799,7 @@
       var bit = Number(input.dataset.bit);
       input.checked = (state.rgb & (1 << bit)) !== 0;
     });
-    scheduleWrite("rgb");
+    renderTestButton();
   }
 
   var toast = document.getElementById("toast");
@@ -822,6 +837,7 @@
       if (typeof loaded[key] === "number") state[key] = loaded[key];
     });
     applyStateToUi();
+    CONFIG_KEYS.forEach(scheduleWrite);
     showToast("Config loaded");
   });
 
@@ -835,6 +851,7 @@
 
   function scheduleWrite(key) {
     if (!characteristic) return;
+    if (key !== "rgbButton") saveConfigBtn.disabled = false;
     pendingFields[key] = state[key];
     if (writeTimer) return;
     writeTimer = setTimeout(flushWrite, 40);
@@ -866,9 +883,33 @@
     });
   }
 
+  // Returns the settings in a characteristic read, or throws if it isn't a snapshot we understand.
+  function decodeSnapshot(view) {
+    if (view.byteLength !== SNAPSHOT_LENGTH || view.getUint8(0) !== SNAPSHOT_VERSION) {
+      throw new Error("Unrecognized settings data (" + view.byteLength + " bytes)");
+    }
+    return {
+      brightness: view.getUint8(1),
+      sensitivity: view.getUint8(2),
+      speed: view.getUint8(3),
+      palette: view.getUint8(4),
+      normalizeBands: view.getUint8(5),
+      rgbButton: view.getUint8(6),
+      rgb: view.getUint16(7, true),
+      showConverterLeds: view.getUint8(9),
+      skipStrip: view.getUint8(10)
+    };
+  }
+
   function onDisconnected() {
+    session++;
     characteristic = null;
     device = null;
+    // Don't let writes queued for this connection reach the next one.
+    clearTimeout(writeTimer);
+    writeTimer = null;
+    pendingFields = {};
+    readFailed.classList.remove("show");
     setStatus("disconnected", "Disconnected");
     setPanelsEnabled(false);
     connectBtn.textContent = "Connect to Phonic Bloom";
@@ -877,8 +918,16 @@
   }
 
   function connect() {
+    var attempt = ++session;
+    var ch = null;
     setStatus("connecting", "Requesting device…");
     connectBtn.disabled = true;
+
+    // Throws to abandon the rest of the chain if this connection has been dropped or replaced.
+    function checkCurrent(value) {
+      if (attempt !== session) throw new Error("Connection abandoned");
+      return value;
+    }
 
     navigator.bluetooth.requestDevice({
       filters: [{ services: [SERVICE_UUID] }]
@@ -887,30 +936,55 @@
       device.addEventListener("gattserverdisconnected", onDisconnected);
       setStatus("connecting", "Connecting…");
       return device.gatt.connect();
-    }).then(function (server) {
+    }).then(checkCurrent).then(function (server) {
       return server.getPrimaryService(SERVICE_UUID);
-    }).then(function (service) {
+    }).then(checkCurrent).then(function (service) {
       return service.getCharacteristic(CHAR_UUID);
-    }).then(function (ch) {
-      characteristic = ch;
-      setStatus("connected", device.name || "Connected");
+    }).then(checkCurrent).then(function (c) {
+      ch = c;
+      setStatus("connecting", "Reading settings…");
+      // Let the user bail out if the read stalls.
       connectBtn.textContent = "Disconnect";
       connectBtn.dataset.connected = "true";
       connectBtn.disabled = false;
+      // The read is the only GATT operation in progress: nothing can write until `characteristic`
+      // is set below.
+      return ch.readValue().then(decodeSnapshot).catch(function (err) {
+        console.error("BLE settings read failed", err);
+        return null;
+      });
+    }).then(checkCurrent).then(function (settings) {
+      // A read can also fail because the link dropped, before the disconnect event arrives.
+      if (!device.gatt.connected) {
+        onDisconnected();
+        return;
+      }
+      if (settings) {
+        Object.assign(state, settings);
+      } else {
+        // Don't carry a lit test button over from an earlier connection.
+        state.rgbButton = 0;
+      }
+      applyStateToUi();
+      readFailed.classList.toggle("show", !settings);
+      characteristic = ch;
+      setStatus("connected", device.name || "Connected");
       setPanelsEnabled(true);
+      saveConfigBtn.disabled = !settings;
     }).catch(function (err) {
+      if (attempt !== session) return;
       console.error("BLE connect failed", err);
       setStatus("error", err && err.name === "NotFoundError" ? "No device chosen" : "Connection failed");
       connectBtn.disabled = false;
       connectBtn.textContent = "Connect to Phonic Bloom";
       setTimeout(function () {
-        if (!characteristic) setStatus("disconnected", "Disconnected");
+        if (attempt === session) setStatus("disconnected", "Disconnected");
       }, 2200);
     });
   }
 
   connectBtn.addEventListener("click", function () {
-    if (characteristic && device) {
+    if (connectBtn.dataset.connected === "true" && device) {
       device.gatt.disconnect();
       onDisconnected();
       return;

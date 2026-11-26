@@ -19,13 +19,32 @@ struct BleConfigUpdate_t {
   uint8_t field; // BleConfigField
   uint16_t value;
 };
+
+// Wire message returned by a read: every attribute at once, little-endian. Must stay in sync with
+// decodeSnapshot() in phonic-bloom-control.html. Keep it at most 22 bytes so it fits in a single
+// read response at the default BLE MTU.
+struct BleConfigSnapshot_t {
+  uint8_t version; // kSnapshotVersion
+  uint8_t brightness;
+  uint8_t sensitivity;
+  uint8_t speed;
+  uint8_t palette;
+  uint8_t normalizeBands;
+  uint8_t rgbButton;
+  uint16_t rgb;
+  uint8_t showConverterLeds;
+  uint8_t skipStrip;
+};
 #pragma pack(pop)
+
+const uint8_t kSnapshotVersion = 1;
+static_assert(sizeof(BleConfigSnapshot_t) <= 22, "BLE config snapshot must fit in one read");
 
 portMUX_TYPE bleConfigMux = portMUX_INITIALIZER_UNLOCKED;
 // Holds the merged, last-known-good value of every attribute. Single-field writes update this in
 // place rather than replacing it wholesale, so fields the client hasn't sent yet keep their value.
-// Defaults mirror the control page's initial slider/switch state.
-BleConfigMessage_t currentConfig = {25, 25, 60, 0, 1, 0, 0, 0, 0};
+// Seeded by setupBleConfigService() with the device's configuration.
+BleConfigMessage_t currentConfig = {};
 volatile bool messagePending = false;
 volatile bool clientConnected = false;
 // Bitmask (1 << BleConfigField) of every field applied since the last poll.
@@ -88,7 +107,26 @@ bool applyFieldUpdate(uint8_t field, uint16_t value, BleConfigMessage_t& config)
   }
 }
 
-class ConfigWriteCallbacks : public BLECharacteristicCallbacks {
+class ConfigCharacteristicCallbacks : public BLECharacteristicCallbacks {
+  void onRead(BLECharacteristic* characteristic) override {
+    portENTER_CRITICAL(&bleConfigMux);
+    const BleConfigMessage_t config = currentConfig;
+    portEXIT_CRITICAL(&bleConfigMux);
+
+    BleConfigSnapshot_t snapshot = {
+      kSnapshotVersion,
+      static_cast<uint8_t>(config.brightness),
+      static_cast<uint8_t>(config.sensitivity),
+      static_cast<uint8_t>(config.speed),
+      config.palette,
+      config.normalizeBands,
+      config.rgbButton,
+      config.rgb,
+      config.showConverterLeds,
+      config.skipStrip};
+    characteristic->setValue(reinterpret_cast<uint8_t*>(&snapshot), sizeof(snapshot));
+  }
+
   void onWrite(BLECharacteristic* characteristic) override {
     if (characteristic->getLength() != sizeof(BleConfigUpdate_t)) {
       Serial.printf(
@@ -115,11 +153,12 @@ class ConfigWriteCallbacks : public BLECharacteristicCallbacks {
   }
 };
 
-ConfigWriteCallbacks configWriteCallbacks;
+ConfigCharacteristicCallbacks configCharacteristicCallbacks;
 
 } // namespace
 
-void setupBleConfigService() {
+void setupBleConfigService(const BleConfigMessage_t& initialConfig) {
+  currentConfig = initialConfig;
   BLEDevice::init("Phonic Bloom config");
   BLEServer* server = BLEDevice::createServer();
   server->setCallbacks(&configServerCallbacks);
@@ -127,8 +166,9 @@ void setupBleConfigService() {
 
   BLECharacteristic* configCharacteristic = service->createCharacteristic(
     kConfigCharUuid,
-    BLECharacteristic::PROPERTY_WRITE | BLECharacteristic::PROPERTY_WRITE_NR);
-  configCharacteristic->setCallbacks(&configWriteCallbacks);
+    BLECharacteristic::PROPERTY_READ | BLECharacteristic::PROPERTY_WRITE |
+      BLECharacteristic::PROPERTY_WRITE_NR);
+  configCharacteristic->setCallbacks(&configCharacteristicCallbacks);
 
   service->start();
 

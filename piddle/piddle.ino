@@ -309,7 +309,17 @@ void setup() {
     bleConfigActive = true;
     configuration.rgbButton = 0;
     Serial.println("Setting up BLE config service (requested via button press)");
-    setupBleConfigService();
+    const BleConfigMessage_t initialBleConfig = {
+      configuration.brightnessSlider,
+      configuration.sensitivitySlider,
+      configuration.speedSlider,
+      configuration.palette,
+      configuration.normalizeBandsSwitch,
+      configuration.rgbButton,
+      configuration.rgb,
+      configuration.showConverterLedsSwitch,
+      configuration.skipStrip};
+    setupBleConfigService(initialBleConfig);
     bleConfigLastActivityMillis = millis();
     Serial.println("Done setting up BLE config service");
   } else {
